@@ -36,5 +36,8 @@ export interface Span {
   source: SpanSource
 }
 
-/** Where a model call really ran. LOCAL = plain code, no model involved. */
-export type ExecutedOn = 'ON_DEVICE' | 'IN_CLOUD' | 'LOCAL' | 'BLOCKED'
+/**
+ * Where a step really ran. LOCAL = plain code, no model involved. BLOCKED = the egress guard
+ * refused to send it. FAILED = the call threw before a result came back.
+ */
+export type ExecutedOn = 'ON_DEVICE' | 'IN_CLOUD' | 'LOCAL' | 'BLOCKED' | 'FAILED'

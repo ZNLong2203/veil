@@ -26,6 +26,7 @@ export interface LedgerSummary {
   onDevice: number
   inCloud: number
   blocked: number
+  failed: number
   charsSent: number
 }
 
@@ -58,11 +59,12 @@ export class Ledger {
 }
 
 export function summarize(entries: readonly LedgerEntry[]): LedgerSummary {
-  const s: LedgerSummary = { calls: 0, onDevice: 0, inCloud: 0, blocked: 0, charsSent: 0 }
+  const s: LedgerSummary = { calls: 0, onDevice: 0, inCloud: 0, blocked: 0, failed: 0, charsSent: 0 }
   for (const e of entries) {
     if (e.executedOn === 'ON_DEVICE') s.onDevice++
     else if (e.executedOn === 'IN_CLOUD') s.inCloud++
     else if (e.executedOn === 'BLOCKED') s.blocked++
+    else if (e.executedOn === 'FAILED') s.failed++
     if (e.executedOn !== 'LOCAL') s.calls++
     s.charsSent += e.charsSent
   }

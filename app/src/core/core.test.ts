@@ -182,6 +182,6 @@ describe('ledger', () => {
     l.add({ task: 'findEntities', route: 'ON_DEVICE_ONLY', executedOn: 'ON_DEVICE', charsSent: 0, redactions: 0, durationMs: 40 })
     l.add({ task: 'explain', route: 'PREFER_CLOUD', executedOn: 'IN_CLOUD', charsSent: 900, redactions: 7, durationMs: 800 })
     l.add({ task: 'explain', route: 'PREFER_CLOUD', executedOn: 'BLOCKED', charsSent: 0, redactions: 0, durationMs: 0 })
-    expect(summarize(l.getSnapshot())).toEqual({ calls: 3, onDevice: 1, inCloud: 1, blocked: 1, charsSent: 900 })
+    expect(summarize(l.getSnapshot())).toEqual({ calls: 3, onDevice: 1, inCloud: 1, blocked: 1, failed: 0, charsSent: 900 })
   })
 })
