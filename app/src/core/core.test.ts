@@ -1,0 +1,187 @@
+import { describe, expect, it } from 'vitest'
+import { chunkText } from './chunk'
+import { assertSafeForCloud, EgressBlockedError, inspectEgress } from './egress'
+import { Ledger, summarize } from './ledger'
+import { POLICY, policyViolations, type TaskPolicy } from './policy'
+import { buildRedaction } from './redact'
+import { detectWithRules, ibanValid, luhnValid } from './rules'
+import { Vault } from './vault'
+
+// All data below is fictional. 555-01xx numbers, 9xx SSNs and the 4111… card are reserved test values.
+const BILL = `Riverside Medical Center — Statement
+Patient: Jordan Rivera
+Date of birth: 04/12/1988
+Address: 1420 Maple Street, Apt 4B
+Phone: (415) 555-0132   Email: jordan.rivera@example.com
+SSN: 912-34-5678
+Claim number: CLM-88231-77
+Card on file: 4111 1111 1111 1111
+Account number: 00123456789
+Total due: $1,248.50 by 2026-12-15.
+Dr. Chen billed an out-of-network anesthesiologist.`
+
+describe('detectors', () => {
+  const spans = detectWithRules(BILL)
+  const found = (kind: string) => spans.filter((s) => s.kind === kind).map((s) => s.text)
+
+  it('finds the structured identifiers', () => {
+    expect(found('EMAIL')).toEqual(['jordan.rivera@example.com'])
+    expect(found('PHONE')).toContain('(415) 555-0132')
+    expect(found('IDNUM')).toEqual(expect.arrayContaining(['912-34-5678', 'CLM-88231-77']))
+    expect(found('CARD')).toEqual(['4111 1111 1111 1111'])
+    expect(found('BANK')).toEqual(['00123456789'])
+    expect(found('DOB')).toEqual(['04/12/1988'])
+  })
+
+  it('finds labelled names and street addresses without a model', () => {
+    expect(found('PERSON')).toEqual(expect.arrayContaining(['Jordan Rivera', 'Chen']))
+    expect(found('ADDRESS')[0]).toMatch(/^1420 Maple Street/)
+  })
+
+  it('does not treat amounts or deadlines as personal data', () => {
+    const all = spans.map((s) => s.text).join('|')
+    expect(all).not.toContain('1,248.50')
+    expect(all).not.toContain('2026-12-15')
+  })
+
+  it('validates card numbers with Luhn and IBANs with mod-97', () => {
+    expect(luhnValid('4111111111111111')).toBe(true)
+    expect(luhnValid('4111111111111112')).toBe(false)
+    expect(ibanValid('GB82 WEST 1234 5698 7654 32')).toBe(true)
+    expect(ibanValid('GB82 WEST 1234 5698 7654 33')).toBe(false)
+  })
+
+  it('catches Vietnamese phone numbers and labels', () => {
+    const vn = detectWithRules('Họ và tên: Nguyễn Văn An\nĐiện thoại: 0912 345 678\nCCCD: 079088001234')
+    expect(vn.map((s) => s.text)).toEqual(expect.arrayContaining(['Nguyễn Văn An', '0912 345 678', '079088001234']))
+  })
+})
+
+describe('vault', () => {
+  it('gives the same placeholder to the same value in any casing', () => {
+    const v = new Vault()
+    const a = v.add('PERSON', 'Jordan Rivera', 'rules')
+    const b = v.add('PERSON', 'JORDAN  rivera', 'on-device')
+    expect(a?.token).toBe('[PERSON_1]')
+    expect(b?.token).toBe('[PERSON_1]')
+    expect(v.size).toBe(1)
+  })
+
+  it('redacts every occurrence, longest value first, on word boundaries', () => {
+    const v = new Vault()
+    v.add('PERSON', 'Jordan Rivera', 'rules')
+    v.add('PERSON', 'Rivera', 'on-device')
+    const out = v.apply('Jordan Rivera met Dr. Rivera. Riverside is unrelated.')
+    expect(out).toBe('[PERSON_1] met Dr. [PERSON_2]. Riverside is unrelated.')
+  })
+
+  it('round-trips through rehydrate, even when the model drops the brackets', () => {
+    const v = new Vault()
+    v.addSpans(detectWithRules(BILL))
+    const redacted = v.apply(BILL)
+    expect(v.rehydrate(redacted)).toBe(BILL)
+    expect(v.rehydrate('Call PERSON_1 or [person_1].')).toBe('Call Jordan Rivera or Jordan Rivera.')
+  })
+
+  it('leaves unknown placeholders alone and supports un-protecting a value', () => {
+    const v = new Vault()
+    v.add('PERSON', 'Jordan Rivera', 'rules')
+    expect(v.rehydrate('[PERSON_9]')).toBe('[PERSON_9]')
+    v.remove('[PERSON_1]')
+    expect(v.apply('Jordan Rivera')).toBe('Jordan Rivera')
+  })
+})
+
+describe('egress guard', () => {
+  it('passes a properly redacted document', () => {
+    const v = new Vault()
+    v.addSpans(detectWithRules(BILL))
+    const redacted = v.apply(BILL)
+    expect(inspectEgress(redacted, v)).toEqual([])
+    expect(() => assertSafeForCloud(redacted, v)).not.toThrow()
+    expect(redacted).not.toMatch(/Jordan|Rivera|555-0132|912-34|4111/)
+  })
+
+  it('blocks a payload that still contains a vault value', () => {
+    const v = new Vault()
+    v.add('PERSON', 'Jordan Rivera', 'on-device')
+    expect(() => assertSafeForCloud('Please explain why Jordan Rivera owes this.', v)).toThrow(EgressBlockedError)
+  })
+
+  it('blocks structured identifiers the vault has never seen', () => {
+    const v = new Vault()
+    const findings = inspectEgress('Contact me at someone@example.org', v)
+    expect(findings).toEqual([{ kind: 'EMAIL', via: 'rules', count: 1 }])
+  })
+
+  it('never puts the leaked value into its error message', () => {
+    const v = new Vault()
+    v.add('PERSON', 'Jordan Rivera', 'on-device')
+    try {
+      assertSafeForCloud('Jordan Rivera, 912-34-5678', v)
+      expect.unreachable()
+    } catch (e) {
+      expect((e as Error).message).not.toMatch(/Jordan|Rivera|912-34-5678/)
+    }
+  })
+})
+
+describe('policy', () => {
+  it('never lets a task that reads raw data reach the cloud', () => {
+    expect(policyViolations()).toEqual([])
+  })
+
+  it('detects a violation when one is introduced', () => {
+    const bad: Record<string, TaskPolicy> = {
+      ...POLICY,
+      findEntities: { ...POLICY.findEntities, route: 'PREFER_ON_DEVICE' },
+    }
+    expect(policyViolations(bad)).toEqual(['findEntities'])
+  })
+})
+
+describe('redaction pipeline', () => {
+  it('merges rules and an injected on-device detector', async () => {
+    const v = new Vault()
+    const report = await buildRedaction('Please contact Priya Natarajan at priya@example.com.', v, {
+      detect: async () => [{ start: 0, end: 0, kind: 'PERSON', text: 'Priya Natarajan', source: 'on-device' }],
+    })
+    expect(report).toMatchObject({ rulesFound: 1, modelAdded: 1, modelCovered: true })
+    expect(v.apply('Please contact Priya Natarajan at priya@example.com.')).toBe(
+      'Please contact [PERSON_1] at [EMAIL_1].',
+    )
+  })
+
+  it('degrades to rules-only and reports it when the model is unavailable', async () => {
+    const v = new Vault()
+    const report = await buildRedaction('Email: a@b.co', v, {
+      detect: async () => {
+        throw new Error('Local LanguageModel API not available in this environment.')
+      },
+    })
+    expect(report.modelCovered).toBe(false)
+    expect(report.modelError).toMatch(/not available/)
+    expect(report.rulesFound).toBe(1)
+  })
+})
+
+describe('chunking', () => {
+  it('keeps short text whole and splits long text under the limit', () => {
+    expect(chunkText('hello')).toEqual(['hello'])
+    const long = Array.from({ length: 200 }, (_, i) => `Sentence number ${i} is here.`).join(' ')
+    const chunks = chunkText(long, 500)
+    expect(chunks.length).toBeGreaterThan(5)
+    expect(chunks.every((c) => c.length <= 500)).toBe(true)
+    expect(chunks.join(' ').replace(/\s+/g, ' ')).toContain('Sentence number 199 is here.')
+  })
+})
+
+describe('ledger', () => {
+  it('summarises where work ran and how much text left the device', () => {
+    const l = new Ledger()
+    l.add({ task: 'findEntities', route: 'ON_DEVICE_ONLY', executedOn: 'ON_DEVICE', charsSent: 0, redactions: 0, durationMs: 40 })
+    l.add({ task: 'explain', route: 'PREFER_CLOUD', executedOn: 'IN_CLOUD', charsSent: 900, redactions: 7, durationMs: 800 })
+    l.add({ task: 'explain', route: 'PREFER_CLOUD', executedOn: 'BLOCKED', charsSent: 0, redactions: 0, durationMs: 0 })
+    expect(summarize(l.getSnapshot())).toEqual({ calls: 3, onDevice: 1, inCloud: 1, blocked: 1, charsSent: 900 })
+  })
+})
