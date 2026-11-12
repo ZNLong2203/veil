@@ -6,6 +6,7 @@ import { POLICY, policyViolations, type TaskPolicy } from './policy'
 import { buildRedaction } from './redact'
 import { detectWithRules, ibanValid, luhnValid } from './rules'
 import { Vault } from './vault'
+import { SAMPLES } from '../samples'
 
 // All data below is fictional. 555-01xx numbers, 9xx SSNs and the 4111… card are reserved test values.
 const BILL = `Riverside Medical Center — Statement
@@ -81,6 +82,22 @@ describe('vault', () => {
     const redacted = v.apply(BILL)
     expect(v.rehydrate(redacted)).toBe(BILL)
     expect(v.rehydrate('Call PERSON_1 or [person_1].')).toBe('Call Jordan Rivera or Jordan Rivera.')
+  })
+
+  it('segments text into plain and protected runs that reassemble to the original', () => {
+    const v = new Vault()
+    v.addSpans(detectWithRules(BILL))
+    const segs = v.segments(BILL)
+    expect(segs.map((s) => s.text).join('')).toBe(BILL)
+    expect(segs.filter((s) => s.entry).map((s) => s.entry!.kind)).toContain('EMAIL')
+    expect(new Vault().segments('abc')).toEqual([{ text: 'abc', entry: null }])
+  })
+
+  it('rehydrates nested model output, including values with quotes', () => {
+    const v = new Vault()
+    v.add('PERSON', 'Sean "Bud" O\'Brien', 'user')
+    const out = v.rehydrateDeep({ a: ['Hello [PERSON_1]'], b: { c: '[PERSON_1]' }, n: 3 })
+    expect(out).toEqual({ a: ['Hello Sean "Bud" O\'Brien'], b: { c: 'Sean "Bud" O\'Brien' }, n: 3 })
   })
 
   it('leaves unknown placeholders alone and supports un-protecting a value', () => {
@@ -183,5 +200,25 @@ describe('ledger', () => {
     l.add({ task: 'explain', route: 'PREFER_CLOUD', executedOn: 'IN_CLOUD', charsSent: 900, redactions: 7, durationMs: 800 })
     l.add({ task: 'explain', route: 'PREFER_CLOUD', executedOn: 'BLOCKED', charsSent: 0, redactions: 0, durationMs: 0 })
     expect(summarize(l.getSnapshot())).toEqual({ calls: 3, onDevice: 1, inCloud: 1, blocked: 1, failed: 0, charsSent: 900 })
+  })
+})
+
+describe('sample documents', () => {
+  for (const sample of SAMPLES) {
+    it(`"${sample.title}" is fully clean for the cloud after the rules pass`, () => {
+      const v = new Vault()
+      v.addSpans(detectWithRules(sample.text))
+      const redacted = v.apply(sample.text)
+      expect(inspectEgress(redacted, v)).toEqual([])
+      expect(redacted).not.toMatch(/@example\.com|555[ -]?01\d\d|\b912-3\d-\d{4}\b|4111 1111/)
+      expect(v.rehydrate(redacted)).toBe(sample.text)
+    })
+  }
+
+  it('treats a company after "Landlord:" as an organisation, and keeps the full street address', () => {
+    const lease = SAMPLES.find((s) => s.id === 'lease')!.text
+    const spans = detectWithRules(lease)
+    expect(spans.map((s) => s.text)).not.toContain('Gable')
+    expect(spans.find((s) => s.kind === 'ADDRESS')?.text).toBe('77 Harbor View Road, Unit 12, Oakland, CA 94607')
   })
 })

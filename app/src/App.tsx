@@ -1,122 +1,75 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { isFirebaseConfigured } from './ai/env'
+import { useDevice } from './state/useDevice'
+import { useSession, type Stage } from './state/useSession'
+import { AddStep } from './ui/AddStep'
+import { Header } from './ui/Header'
+import { LedgerPanel } from './ui/LedgerPanel'
+import { ResultStep } from './ui/ResultStep'
+import { ReviewStep } from './ui/ReviewStep'
 
-function App() {
-  const [count, setCount] = useState(0)
+const STEPS: Array<{ id: Stage; label: string }> = [
+  { id: 'add', label: 'Add' },
+  { id: 'review', label: 'Review' },
+  { id: 'result', label: 'Understand' },
+]
+
+export default function App() {
+  const device = useDevice()
+  const s = useSession(device.caps)
+  const current = STEPS.findIndex((x) => x.id === s.stage)
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app">
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
+      <Header device={device} />
 
-      <div className="ticks"></div>
+      {!isFirebaseConfigured && (
+        <p className="banner banner--warn wrap" role="status">
+          Firebase is not configured, so AI steps are off. You can still add a document and see what Veil would protect. Setup:
+          docs/setup.md
+        </p>
+      )}
+      {device.error && (
+        <p className="banner banner--warn wrap" role="alert">
+          {device.error}
+        </p>
+      )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <div className="layout wrap">
+        <main id="main">
+          <ol className="steps" aria-label="Progress">
+            {STEPS.map((step, i) => (
+              <li key={step.id} aria-current={i === current ? 'step' : undefined} className={i < current ? 'done' : i === current ? 'now' : ''}>
+                <span className="steps__n">{i + 1}</span> {step.label}
+              </li>
+            ))}
+          </ol>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+          {s.error && (
+            <p className="banner banner--error" role="alert">
+              {s.error}
+            </p>
+          )}
+
+          {s.busy && (
+            <div className="busy" role="status" aria-live="polite">
+              <span className="spinner" aria-hidden="true" /> {s.busy.label}
+              {s.busy.progress !== undefined && <progress value={s.busy.progress} max={1} />}
+            </div>
+          )}
+
+          {s.stage === 'add' && <AddStep s={s} />}
+          {s.stage === 'review' && <ReviewStep s={s} online={device.online} deviceReady={device.caps?.text === 'available'} />}
+          {s.stage === 'result' && <ResultStep s={s} />}
+        </main>
+        <LedgerPanel vault={s.vault} version={s.version} />
+      </div>
+
+      <footer className="foot wrap small muted">
+        Open source (Apache-2.0). Built with Firebase AI Logic hybrid inference: Gemini Nano on-device, Gemini in the cloud.
+      </footer>
+    </div>
   )
 }
-
-export default App

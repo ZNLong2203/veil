@@ -76,14 +76,36 @@ export class Vault {
     this.counters.clear()
   }
 
-  /** Replace every occurrence of every known value, longest first, on word boundaries. */
-  apply(text: string): string {
-    if (this.byToken.size === 0) return text
+  /** One regex matching every known value, longest first, on word boundaries (null when empty). */
+  private pattern(): RegExp | null {
+    if (this.byToken.size === 0) return null
     const values = this.entries()
       .map((e) => e.value)
       .sort((a, b) => b.length - a.length)
-    const re = new RegExp(`${BOUND_BEFORE}(?:${values.map((v) => escapeRe(v).replace(/\s+/g, '\\s+')).join('|')})${BOUND_AFTER}`, 'giu')
+    const body = values.map((v) => escapeRe(v).replace(/\s+/g, '\\s+')).join('|')
+    return new RegExp(`${BOUND_BEFORE}(?:${body})${BOUND_AFTER}`, 'giu')
+  }
+
+  /** Replace every occurrence of every known value with its placeholder. */
+  apply(text: string): string {
+    const re = this.pattern()
+    if (!re) return text
     return text.replace(re, (m) => this.byKey.get(normalize(m))?.token ?? m)
+  }
+
+  /** Split `text` into plain and protected runs, for highlighting in the review step. */
+  segments(text: string): Array<{ text: string; entry: VaultEntry | null }> {
+    const re = this.pattern()
+    if (!re) return [{ text, entry: null }]
+    const out: Array<{ text: string; entry: VaultEntry | null }> = []
+    let last = 0
+    for (const m of text.matchAll(re)) {
+      if (m.index > last) out.push({ text: text.slice(last, m.index), entry: null })
+      out.push({ text: m[0], entry: this.byKey.get(normalize(m[0])) ?? null })
+      last = m.index + m[0].length
+    }
+    if (last < text.length) out.push({ text: text.slice(last), entry: null })
+    return out
   }
 
   /** Put the real values back into text that came back from the cloud. */
@@ -93,6 +115,16 @@ export class Vault {
       return entry ? entry.value : full
     }
     return text.replace(TOKEN_RE, swap).replace(LENIENT_TOKEN_RE, swap)
+  }
+
+  /** Rehydrate every string inside a JSON-like value (model output) without re-serialising it. */
+  rehydrateDeep<T>(value: T): T {
+    if (typeof value === 'string') return this.rehydrate(value) as T
+    if (Array.isArray(value)) return value.map((v) => this.rehydrateDeep(v)) as T
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, this.rehydrateDeep(v)])) as T
+    }
+    return value
   }
 
   /** Every original value that appears in `text`, as `{token, kind}` (never the value itself). */

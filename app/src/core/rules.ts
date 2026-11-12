@@ -225,7 +225,6 @@ const NAME_LABELS = alt([
   'employee',
   'claimant',
   'client',
-  'dear',
   'họ và tên',
   'họ tên',
   'bệnh nhân',
@@ -233,17 +232,37 @@ const NAME_LABELS = alt([
 
 const NAME_BODY = "\\p{Lu}[\\p{L}'’-]+(?:[ \\t]+\\p{Lu}[\\p{L}'’-]+){0,3}"
 
+const ORG_WORDS = /\b(?:LLC|Inc|Ltd|Corp|Company|Management|Group|Bank|Hospital|Medical|Center|Centre|Services|Properties|Realty|Health|Insurance|Plan|Department|Dept)\b/i
+
+/** "Landlord: Gable & Finch Property Management" is a company, not a person. */
+function looksLikeOrganisation(text: string, g: { end: number; text: string }): boolean {
+  return ORG_WORDS.test(g.text) || /^[ \t]*(?:&|and\b)/i.test(text.slice(g.end, g.end + 6))
+}
+
+const TITLES = '(?:Mr|Mrs|Ms|Miss|Dr|Prof)'
+/** A name may not start with a title ("Dear Ms. [PERSON_1]" must not yield "Ms"). */
+const NAME_NOT_TITLE = `(?!${TITLES}\\b)${NAME_BODY}`
+
 function detectLabeledNames(text: string): Found[] {
   const out: Found[] = []
+  // "Patient: Jordan Rivera" — a label needs a colon or dash, so headings like "PATIENT STATEMENT" are ignored.
   const labeled = new RegExp(
-    `(?<![\\p{L}\\p{N}])${NAME_LABELS}[ \\t]*[:\\-]?[ \\t]*(?:(?:Mr|Mrs|Ms|Miss|Dr|Prof)\\.?[ \\t]+)?(${NAME_BODY})`,
+    `(?<![\\p{L}\\p{N}])${NAME_LABELS}[ \\t]*[:\\-–][ \\t]*(?:${TITLES}\\.?[ \\t]+)?(${NAME_NOT_TITLE})`,
     'dgu',
   )
-  for (const m of matchAll(labeled, text)) {
-    const g = group(m, 1)
-    if (g) out.push({ ...g, kind: 'PERSON' })
+  // "Dear Ms. Natarajan" — salutations need no colon.
+  const dear = new RegExp(
+    `(?<![\\p{L}\\p{N}])${ci('dear')}[ \\t]+(?:${TITLES}\\.?[ \\t]+)?(${NAME_NOT_TITLE})`,
+    'dgu',
+  )
+  for (const re of [labeled, dear]) {
+    for (const m of matchAll(re, text)) {
+      const g = group(m, 1)
+      if (g && !looksLikeOrganisation(text, g)) out.push({ ...g, kind: 'PERSON' })
+    }
   }
-  const titled = new RegExp(`(?<![\\p{L}\\p{N}])(?:Mr|Mrs|Ms|Miss|Dr|Prof)\\.?[ \\t]+(${NAME_BODY})`, 'dgu')
+  // "Dr. Chen", "Mrs. Okafor"
+  const titled = new RegExp(`(?<![\\p{L}\\p{N}])${TITLES}\\.?[ \\t]+(${NAME_NOT_TITLE})`, 'dgu')
   for (const m of matchAll(titled, text)) {
     const g = group(m, 1)
     if (g) out.push({ ...g, kind: 'PERSON' })
@@ -256,7 +275,7 @@ function detectAddresses(text: string): Found[] {
   const street =
     '(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Way|Place|Pl|Terrace|Highway|Hwy)'
   const re = new RegExp(
-    `(?<![\\p{L}\\p{N}])\\d{1,6}[A-Za-z]?[ \\t]+(?:\\p{Lu}[\\p{L}.'’-]*[ \\t]+){1,4}${street}\\b\\.?(?:,?\\s*(?:Apt|Unit|Suite|Ste|#)\\.?\\s*[\\w-]+)?`,
+    `(?<![\\p{L}\\p{N}])\\d{1,6}[A-Za-z]?[ \\t]+(?:\\p{Lu}[\\p{L}.'’-]*[ \\t]+){1,4}${street}\\b\\.?(?:,?\\s*(?:Apt|Unit|Suite|Ste|#)\\.?\\s*[\\w-]+)?(?:,[ \\t]*\\p{Lu}[\\p{L} .'’-]+,[ \\t]*[A-Z]{2}[ \\t]+\\d{5}(?:-\\d{4})?)?`,
     'gu',
   )
   for (const m of matchAll(re, text)) {
