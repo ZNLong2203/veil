@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { isFirebaseConfigured } from '../ai/env'
 import { PII_KINDS, PII_LABELS, type PiiKind } from '../core/types'
 import { LANGUAGES, type Session } from '../state/useSession'
-import { ArrowIcon, ShieldIcon, XIcon } from './icons'
+import { ArrowIcon, LockIcon, ShieldIcon, XIcon } from './icons'
 
 export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boolean; deviceReady: boolean }) {
   const docRef = useRef<HTMLDivElement>(null)
@@ -93,9 +93,15 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
                 <span className="token">{e.token}</span>
                 <span className="values__v">{e.value}</span>
                 <span className="muted small">{e.source === 'on-device' ? 'Gemini Nano' : e.source === 'user' ? 'you' : 'rules'}</span>
-                <button className="icon-btn" onClick={() => s.unprotect(e.token)} aria-label={`Not sensitive: ${e.value}`} title="Not sensitive">
-                  <XIcon size={14} />
-                </button>
+                {e.source === 'rules' ? (
+                  <span className="icon-btn icon-btn--static" title="Always protected: Veil never sends values its rules recognise. They are filled back in on this device." role="img" aria-label={`Always protected: ${e.value}`}>
+                    <LockIcon size={14} />
+                  </span>
+                ) : (
+                  <button className="icon-btn" onClick={() => s.unprotect(e.token)} aria-label={`Not sensitive: ${e.value}`} title="Not sensitive">
+                    <XIcon size={14} />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -106,6 +112,18 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
         <summary>Exactly what would be sent</summary>
         <pre>{s.redacted}</pre>
       </details>
+
+      <div className="selftest">
+        <button className="btn btn--ghost btn--sm" onClick={() => void s.testGuard()}>
+          <ShieldIcon size={14} /> Prove it: try to send the original
+        </button>
+        <span className="small muted">Runs the real cloud path with your original text. The egress guard must block it. Nothing is sent.</span>
+      </div>
+      {s.notice && (
+        <p className={`banner ${s.notice.kind === 'ok' ? 'banner--ok' : 'banner--warn'}`} role="status">
+          {s.notice.text}
+        </p>
+      )}
 
       <div className="actions actions--col">
         {needsConfirm && (

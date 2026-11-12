@@ -11,7 +11,10 @@ import {
   type Explanation,
   type Triage,
 } from '../ai/tasks'
+import type { GenerativeModel } from 'firebase/ai'
 import { EgressBlockedError } from '../core/egress'
+import { detectWithRules } from '../core/rules'
+import { runTask } from '../ai/run'
 import { ledger } from '../core/ledger'
 import { buildRedaction, type RedactionReport } from '../core/redact'
 import { PII_KINDS, type PiiKind } from '../core/types'
@@ -69,6 +72,7 @@ export function useSession(device: DeviceCapabilities | null) {
   const [classified, setClassified] = useState<(Triage & { executedOn: 'ON_DEVICE' | 'IN_CLOUD' }) | null>(null)
   const [result, setResult] = useState<ExplainResult | null>(null)
   const [answers, setAnswers] = useState<AnswerEntry[]>([])
+  const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
 
   const redacted = useMemo(() => vault.apply(text), [vault, text, version]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -189,6 +193,34 @@ export function useSession(device: DeviceCapabilities | null) {
     [run, answers, vault, text, language],
   )
 
+  /**
+   * Safety self-test: push the ORIGINAL document through the real cloud-bound path. The egress guard
+   * must refuse it. The model here is a stub that must never be reached, so nothing is ever sent.
+   */
+  const testGuard = useCallback(async () => {
+    setNotice(null)
+    if (vault.size === 0 && detectWithRules(text).length === 0) {
+      setNotice({ kind: 'warn', text: 'Veil recognises no personal data in this document, so there was nothing for the guard to block.' })
+      return
+    }
+    const stub = {
+      generateContent: async () => {
+        throw new Error('SELF_TEST_REACHED_MODEL')
+      },
+    } as unknown as GenerativeModel
+    try {
+      await runTask({ task: 'explain', model: stub, parts: [text], outbound: text, vault })
+      setNotice({ kind: 'warn', text: 'Self-test did not run as expected.' })
+    } catch (e) {
+      if (e instanceof EgressBlockedError) {
+        const n = e.findings.reduce((a, f) => a + f.count, 0)
+        setNotice({ kind: 'ok', text: `Self-test passed: the egress guard blocked the original document (${n} finding${n === 1 ? '' : 's'} across the vault and the detectors). Nothing was sent.` })
+      } else {
+        setNotice({ kind: 'warn', text: 'Self-test FAILED: the original text was allowed through the guard. Do not send documents until this is fixed.' })
+      }
+    }
+  }, [vault, text])
+
   const reset = useCallback(() => {
     vault.clear()
     setText('')
@@ -198,6 +230,7 @@ export function useSession(device: DeviceCapabilities | null) {
     setAnswers([])
     setConfirmed(false)
     setError(null)
+    setNotice(null)
     setStage('add')
     bump()
   }, [vault])
@@ -212,7 +245,7 @@ export function useSession(device: DeviceCapabilities | null) {
   return {
     vault, version, stage, setStage, text, setText, busy, error, setError, report, confirmed, setConfirmed,
     language, setLanguage, classified, result, answers, redacted, modelReady,
-    analyze, loadFile, protect, unprotect, understand, ask, reset, show, showExplanation, kinds: PII_KINDS,
+    analyze, loadFile, protect, unprotect, understand, ask, reset, testGuard, notice, show, showExplanation, kinds: PII_KINDS,
   }
 }
 

@@ -169,6 +169,9 @@ p { margin: 0 0 0.75rem; }
 .link { background: none; border: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; padding: 0; }
 .icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .icon-btn:hover { background: var(--danger-soft); color: var(--danger); }
+.icon-btn--static { cursor: help; color: var(--device); }
+.icon-btn--static:hover { background: transparent; color: var(--device); }
+.selftest { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 12px 0; }
 
 /* forms */
 textarea, input[type='text'], input:not([type]), select {
