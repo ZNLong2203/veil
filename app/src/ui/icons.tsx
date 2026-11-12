@@ -84,18 +84,75 @@ export const LockIcon = (p: P) => (
     <path d="M8 11V8a4 4 0 0 1 8 0v3" />
   </Icon>
 )
+export const EyeIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+)
+export const CalendarIcon = (p: P) => (
+  <Icon {...p}>
+    <rect x="4" y="5" width="16" height="15" rx="2" />
+    <path d="M4 10h16M8 3v4M16 3v4" />
+  </Icon>
+)
+export const CopyIcon = (p: P) => (
+  <Icon {...p}>
+    <rect x="8" y="8" width="12" height="12" rx="2" />
+    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+  </Icon>
+)
+export const SunIcon = (p: P) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+  </Icon>
+)
+export const MoonIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+  </Icon>
+)
+export const CheckIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="m5 12.5 4.5 4.5L19 7.5" />
+  </Icon>
+)
+export const DocIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M7 3h7l4 4v14H7V3Z" />
+    <path d="M14 3v4h4M10 12h5M10 16h3" />
+  </Icon>
+)
+export const HomeIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M4 11 12 4l8 7v9H4v-9Z" />
+    <path d="M10 20v-6h4v6" />
+  </Icon>
+)
+export const HeartIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+  </Icon>
+)
 export const ArrowIcon = (p: P) => (
   <Icon {...p}>
     <path d="M5 12h14M13 6l6 6-6 6" />
   </Icon>
 )
 
-export function Logo({ size = 28 }: P) {
+export function Logo({ size = 34 }: P) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <rect width="32" height="32" rx="8" fill="var(--accent)" />
-      <path d="M7 11c3 7 6 11 9 11s6-4 9-11" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
-      <path d="M10 8h12" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity=".55" />
+      <defs>
+        <linearGradient id="veil-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#14b8a6" />
+          <stop offset="1" stopColor="#0b6b62" />
+        </linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="9" fill="url(#veil-g)" />
+      <path d="M16 6.5 8 9.8v5.6c0 4.6 3.1 8.2 8 10.1 4.9-1.9 8-5.500 8-10.100V9.800L16 6.500Z" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M11.500 14.500c1.300 2.700 2.700 4 4.500 4s3.200-1.300 4.500-4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" opacity=".9" />
     </svg>
   )
 }

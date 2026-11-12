@@ -1,7 +1,13 @@
 import { useRef, useState } from 'react'
 import { SAMPLES } from '../samples'
 import type { Session } from '../state/useSession'
-import { ArrowIcon, CameraIcon, FileIcon, ShieldIcon } from './icons'
+import { ArrowIcon, CameraIcon, DocIcon, FileIcon, HeartIcon, HomeIcon, ShieldIcon } from './icons'
+
+const SAMPLE_ICON: Record<string, React.ReactNode> = {
+  bill: <HeartIcon size={18} />,
+  lease: <HomeIcon size={18} />,
+  denial: <DocIcon size={18} />,
+}
 
 export function AddStep({ s }: { s: Session }) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -10,12 +16,11 @@ export function AddStep({ s }: { s: Session }) {
   const empty = s.text.trim().length === 0
 
   return (
-    <section className="card" aria-labelledby="add-h">
-      <h2 id="add-h">What do you need to understand?</h2>
-      <p className="muted">
-        A medical bill, a lease, an insurance letter, a government notice. Veil finds your personal details{' '}
-        <strong>on this device</strong> and removes them before anything is sent for explanation.
-      </p>
+    <section className="card card--lift" aria-labelledby="add-h">
+      <div className="card__head">
+        <h2 id="add-h">Add your document</h2>
+        <p className="muted">Paste the text, open a file, or take a photo. Nothing is uploaded in this step.</p>
+      </div>
 
       <div
         className={`drop ${over ? 'drop--over' : ''}`}
@@ -38,15 +43,15 @@ export function AddStep({ s }: { s: Session }) {
           id="doc"
           value={s.text}
           onChange={(e) => s.setText(e.target.value)}
-          placeholder="Paste the text of your document here, drop a .txt file, or use a photo…"
-          rows={11}
+          placeholder="Paste the text of your bill, lease or letter here, or drop a .txt file…"
+          rows={10}
           spellCheck={false}
         />
         <div className="drop__actions">
-          <button className="btn btn--ghost" onClick={() => fileRef.current?.click()}>
+          <button className="btn btn--ghost btn--sm" onClick={() => fileRef.current?.click()}>
             <FileIcon size={16} /> Open text file
           </button>
-          <button className="btn btn--ghost" onClick={() => photoRef.current?.click()}>
+          <button className="btn btn--ghost btn--sm" onClick={() => photoRef.current?.click()}>
             <CameraIcon size={16} /> Photo of a document
           </button>
           <input ref={fileRef} type="file" accept=".txt,.md,text/plain" hidden onChange={(e) => e.target.files?.[0] && void s.loadFile(e.target.files[0])} />
@@ -54,22 +59,28 @@ export function AddStep({ s }: { s: Session }) {
         </div>
       </div>
 
-      <div className="samples" role="group" aria-label="Sample documents">
-        <span className="muted small">No document handy? Try a fictional one:</span>
+      <p className="samples__label" id="samples-l">
+        No document handy? Try a fictional one
+      </p>
+      <div className="samples" role="group" aria-labelledby="samples-l">
         {SAMPLES.map((sample) => (
           <button key={sample.id} className="sample" onClick={() => s.setText(sample.text)}>
-            <strong>{sample.title}</strong>
-            <span className="muted small">{sample.blurb}</span>
+            <span className="sample__icon">{SAMPLE_ICON[sample.id] ?? <DocIcon size={18} />}</span>
+            <span>
+              <strong>{sample.title}</strong>
+              <span>{sample.blurb}</span>
+            </span>
           </button>
         ))}
       </div>
 
-      <div className="actions">
+      <div className="cta">
         <p className="small muted">
-          <ShieldIcon size={14} /> Nothing is uploaded in this step. Photos are read by Gemini Nano on this device only.
+          <ShieldIcon size={16} /> Photos are read by Gemini Nano on this device only. Text is checked for personal data
+          before anything else happens.
         </p>
-        <button className="btn btn--primary" disabled={empty || s.busy !== null} onClick={() => void s.analyze(s.text)}>
-          Find personal data on this device <ArrowIcon size={16} />
+        <button className="btn btn--primary btn--lg" disabled={empty || s.busy !== null} onClick={() => void s.analyze(s.text)}>
+          Find personal data on this device <ArrowIcon size={18} />
         </button>
       </div>
     </section>

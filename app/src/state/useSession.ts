@@ -220,6 +220,21 @@ export function useSession(device: DeviceCapabilities | null) {
     }
   }, [vault, text])
 
+  /** Development only: show the result screen from a fixture (see src/dev/preview.ts). */
+  const loadPreview = useCallback(
+    (doc: string, explanation: Explanation, triaged: Triage & { executedOn: 'ON_DEVICE' | 'IN_CLOUD' }) => {
+      vault.clear()
+      vault.addSpans(detectWithRules(doc))
+      setText(doc)
+      setClassified(triaged)
+      setResult({ explanation, executedOn: 'IN_CLOUD', compact: false })
+      setAnswers([])
+      setStage('result')
+      bump()
+    },
+    [vault],
+  )
+
   const reset = useCallback(() => {
     vault.clear()
     setText('')
@@ -244,7 +259,7 @@ export function useSession(device: DeviceCapabilities | null) {
   return {
     vault, version, stage, setStage, text, setText, busy, error, setError, report, confirmed, setConfirmed,
     language, setLanguage, classified, result, answers, redacted, modelReady,
-    analyze, loadFile, protect, unprotect, understand, ask, reset, testGuard, notice, show, showExplanation, kinds: PII_KINDS,
+    analyze, loadFile, protect, unprotect, understand, ask, reset, testGuard, notice, loadPreview, show, showExplanation, kinds: PII_KINDS,
   }
 }
 

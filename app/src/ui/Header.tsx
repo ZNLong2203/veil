@@ -1,5 +1,6 @@
 import type { DeviceState } from '../state/useDevice'
 import { ChipIcon, Logo } from './icons'
+import { ThemeToggle } from './ThemeToggle'
 
 function DeviceChip({ device }: { device: DeviceState }) {
   const { caps, progress } = device
@@ -16,7 +17,7 @@ function DeviceChip({ device }: { device: DeviceState }) {
     case 'available':
       return (
         <span className="chip chip--device" role="status">
-          <ChipIcon size={14} /> Gemini Nano ready{caps.image ? ' · photos on' : ''}
+          <span className="dot dot--live" /> Gemini Nano ready{caps.image ? ' · photos' : ''}
         </span>
       )
     case 'downloadable':
@@ -43,19 +44,18 @@ function DeviceChip({ device }: { device: DeviceState }) {
 
 export function Header({ device }: { device: DeviceState }) {
   return (
-    <header className="topbar">
+    <header className="topbar wrap">
       <div className="brand">
         <Logo />
-        <div>
-          <h1>Veil</h1>
-          <p className="muted small">Understand sensitive paperwork. Your personal data stays on your device.</p>
-        </div>
+        <span className="brand__name">Veil</span>
+        <span className="brand__tag">Private paperwork explainer</span>
       </div>
-      <div className="topbar__status">
+      <div className="topbar__right">
         <DeviceChip device={device} />
         <span className={device.online ? 'chip chip--local' : 'chip chip--failed'} role="status">
-          {device.online ? 'Online' : 'Offline'}
+          <span className="dot" /> {device.online ? 'Online' : 'Offline'}
         </span>
+        <ThemeToggle />
       </div>
     </header>
   )

@@ -33,35 +33,36 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
           </button>
         )}
       </header>
+      <p className="ledger__sub">Where each AI step really ran.</p>
 
       <dl className="stats">
         <div>
           <dt>Values protected</dt>
           <dd>{vault.size}</dd>
         </div>
-        <div>
-          <dt>Ran on device</dt>
+        <div className="stat--device">
+          <dt>On device</dt>
           <dd>{s.onDevice}</dd>
         </div>
-        <div>
-          <dt>Ran in cloud</dt>
+        <div className="stat--cloud">
+          <dt>In cloud</dt>
           <dd>{s.inCloud}</dd>
         </div>
-        <div>
+        <div className="stat--blocked">
           <dt>Blocked</dt>
           <dd>{s.blocked}</dd>
         </div>
       </dl>
       <p className="ledger__sent">
-        Text sent to the cloud: <strong>{s.charsSent.toLocaleString()} characters</strong>, all with personal data
-        replaced by placeholders.
+        Sent to the cloud: <strong>{s.charsSent.toLocaleString()} characters</strong>, all with personal data replaced by
+        placeholders.
       </p>
 
-      <ol className="ledger__list" aria-live="polite">
-        {entries.length === 0 && <li className="muted">AI steps will appear here as they happen.</li>}
+      <ol className="timeline" aria-live="polite">
+        {entries.length === 0 && <li className="muted small">AI steps will appear here as they happen.</li>}
         {[...entries].reverse().map((e) => (
-          <li key={e.id}>
-            <div className="ledger__row">
+          <li key={e.id} data-on={e.executedOn}>
+            <div className="timeline__row">
               <strong>{POLICY[e.task].label}</strong>
               <ExecChip on={e.executedOn} />
             </div>
@@ -69,21 +70,21 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
               {ROUTE_LABEL[e.route]} · {e.durationMs} ms
               {e.charsSent > 0 && ` · ${e.charsSent.toLocaleString()} chars sent`}
             </div>
-            {e.note && <div className="small note">{e.note}</div>}
+            {e.note && <div className="note">{e.note}</div>}
           </li>
         ))}
       </ol>
 
       <details className="policy">
-        <summary>Routing policy</summary>
+        <summary>How routing works</summary>
         <p className="small muted">
-          Hybrid inference is used as a data-sensitivity router. A step that reads raw data may only run on this device;
-          steps that get redacted text may use the cloud.
+          Hybrid inference is used as a data-sensitivity router. A step that reads raw data may only run on this device; steps
+          that get redacted text may use the cloud.
         </p>
         <ul>
           {Object.values(POLICY).map((t) => (
             <li key={t.id}>
-              <strong>{t.label}</strong>
+              <strong className="small">{t.label}</strong>
               <span className="chip chip--local">{ROUTE_LABEL[t.route]}</span>
               <p className="small muted">{t.why}</p>
             </li>
@@ -91,9 +92,9 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
         </ul>
       </details>
 
-      <p className="ledger__tip small">
-        <PlaneIcon size={14} /> Try it: switch off Wi-Fi after the model is downloaded. Reviewing and a short summary still
-        work on-device.
+      <p className="ledger__tip">
+        <PlaneIcon size={14} /> Try it: switch off Wi-Fi after the model is downloaded. Review and a short summary still work
+        on-device.
       </p>
     </aside>
   )
