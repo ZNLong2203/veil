@@ -45,13 +45,28 @@ explanations use the cloud model on redacted text.
 (default `gemini-3.5-flash-lite`) is the cloud fallback for light on-device-first tasks. Model names change; check the
 [Firebase AI Logic model list](https://firebase.google.com/docs/ai-logic/models).
 
-## 5. Run
+## 5. Remote Config (optional)
+
+Veil reads four optional parameters from Firebase Remote Config. If you create none of them, or the fetch fails, the values
+from `.env.local` apply and nothing breaks. Values are validated before use (model names must look like model names; the
+on-device text budget is clamped to 1,000–12,000 characters).
+
+| Parameter | Type | Meaning |
+|---|---|---|
+| `cloud_model` | string | Cloud model for the explanation and follow-ups |
+| `cloud_model_lite` | string | Cloud fallback for light, on-device-first tasks |
+| `cloud_enabled` | boolean | **Kill switch.** `false` makes every step on-device only; nothing reaches the cloud |
+| `compact_max_chars` | number | Characters of redacted text given to Gemini Nano for the offline summary |
+
+Create them in **Firebase console → Run → Remote Config**, then **Publish changes**.
+
+## 6. Run
 
 ```bash
 cd app && npm ci && npm run dev
 ```
 
-## 6. Deploy to Firebase Hosting
+## 7. Deploy to Firebase Hosting
 
 ```bash
 npm install -g firebase-tools   # or use npx firebase-tools

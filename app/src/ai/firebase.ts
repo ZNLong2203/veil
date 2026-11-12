@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import { getAI, GoogleAIBackend, type AI } from 'firebase/ai'
 import { appCheckDebugToken, appCheckSiteKey, firebaseConfig, isFirebaseConfigured } from './env'
@@ -10,15 +10,12 @@ export class NotConfiguredError extends Error {
   }
 }
 
-let cached: AI | null = null
+let cachedApp: FirebaseApp | null = null
+let cachedAi: AI | null = null
 
-/**
- * The single entry point to Firebase AI Logic. Every model call in Veil, on-device or cloud,
- * goes through the `AI` instance created here. App Check is initialised first because
- * Firebase AI Logic enforces it.
- */
-export function getAi(): AI {
-  if (cached) return cached
+/** The single Firebase app (with App Check) shared by AI Logic and Remote Config. */
+export function getFirebaseApp(): FirebaseApp {
+  if (cachedApp) return cachedApp
   if (!isFirebaseConfigured) throw new NotConfiguredError()
 
   if (appCheckDebugToken) {
@@ -38,6 +35,17 @@ export function getAi(): AI {
     console.warn('[veil] VITE_APPCHECK_RECAPTCHA_SITE_KEY is not set; Firebase AI Logic will reject cloud calls.')
   }
 
-  cached = getAI(app, { backend: new GoogleAIBackend() })
-  return cached
+  cachedApp = app
+  return app
+}
+
+/**
+ * The single entry point to Firebase AI Logic. Every model call in Veil, on-device or cloud,
+ * goes through the `AI` instance created here. App Check is initialised first because
+ * Firebase AI Logic enforces it.
+ */
+export function getAi(): AI {
+  if (cachedAi) return cachedAi
+  cachedAi = getAI(getFirebaseApp(), { backend: new GoogleAIBackend() })
+  return cachedAi
 }

@@ -15,6 +15,7 @@ app/src
 │   ├── models.ts    Route → InferenceMode; builds hybrid models (onDeviceParams / inCloudParams)
 │   ├── run.ts       runTask(): egress guard → generateContent → inferenceSource → ledger
 │   ├── tasks.ts     readImage, findEntities, triage, explain, followUp, prompts
+│   ├── runtimeConfig.ts  Firebase Remote Config: model names, cloud kill switch, offline text budget (safe defaults)
 │   ├── schemas.ts   JSON Schemas shared by the on-device and cloud backends
 │   └── device.ts    Gemini Nano availability probe and download (via initializeDeviceModel)
 ├── state/     React hooks: session state machine, device status
@@ -56,6 +57,7 @@ document (the SDK falls back on `FETCH_ERROR`, `ERROR` and `API_NOT_ENABLED`).
 | Gemini Nano may be missing (other browsers, weak hardware, not downloaded) | Rules still run; review requires explicit confirmation; explanations still work through the cloud on redacted text. |
 | Same output shape on both backends | One JSON Schema → `responseConstraint` (on-device) and `responseJsonSchema` (cloud). |
 | Default SDK session asks for image input | Text-only models declare only text inputs, so they work without the multimodal flag. |
+| Cloud must be switchable without a deploy | Remote Config `cloud_enabled=false` downgrades every cloud-capable route to `ON_DEVICE_ONLY` (`effectiveRoute`). Remote values are validated and only applied when they truly came from the server. |
 | Proof, not promises | Ledger entries use the SDK-reported `inferenceSource`. A raw-data task that ran off-device has its result discarded. |
 
 ## Platform scope

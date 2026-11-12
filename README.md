@@ -52,6 +52,12 @@ Firebase AI Logic is called in [`app/src/ai/models.ts`](app/src/ai/models.ts) (`
 [`app/src/ai/run.ts`](app/src/ai/run.ts) (`generateContent`), initialised with App Check in
 [`app/src/ai/firebase.ts`](app/src/ai/firebase.ts).
 
+## Firebase products used
+
+**AI Logic** (hybrid inference, the core), **App Check** (required by AI Logic; reCAPTCHA v3 or debug token),
+**Remote Config** (model names, a cloud kill switch, offline text budget, all with safe defaults), **Hosting**.
+Veil deliberately does not use Firestore or Auth: documents are never stored.
+
 ## Quick start
 
 Requirements: Node 22+, Chrome 139+ on desktop (for Gemini Nano), a Firebase project. Full steps in
@@ -64,6 +70,7 @@ cp .env.example .env.local   # fill in your Firebase web config + App Check
 npm run dev                  # http://localhost:5173
 npm test                     # unit tests (privacy contract, detectors, vault, guard)
 npm run build
+npm run check                # typecheck + tests + build, as CI runs
 ```
 
 Without Firebase config the app still runs the Add and Review steps (rules run locally); the AI steps are disabled and say so.

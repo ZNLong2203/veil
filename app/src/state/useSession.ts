@@ -51,6 +51,9 @@ export function friendlyError(e: unknown): string {
     return 'Veil stopped this request because it still contained personal data. Nothing was sent. Review the highlighted items and try again.'
   }
   const msg = e instanceof Error ? e.message : String(e)
+  if (/ONLY_ON_DEVICE|on-device model is not available|LanguageModel API not available/i.test(msg)) {
+    return 'This step needs Gemini Nano on this device, and it is not available right now. Use the header button to download it (Chrome 139+ on desktop), or continue with rules only.'
+  }
   if (/app.?check/i.test(msg)) return `Firebase App Check rejected the request. Check the App Check setup in docs/setup.md. (${msg})`
   if (/api-not-enabled|not been used|PERMISSION_DENIED/i.test(msg)) return `Firebase AI Logic is not enabled for this project yet. See docs/setup.md. (${msg})`
   return msg

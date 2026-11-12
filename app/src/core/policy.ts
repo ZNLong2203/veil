@@ -81,3 +81,11 @@ export function policyViolations(policy: Record<string, TaskPolicy> = POLICY): s
     .filter((t) => t.input === 'raw' && canReachCloud(t.route))
     .map((t) => t.id)
 }
+
+/**
+ * Remote kill switch: when the cloud is switched off, any route that could reach it is
+ * downgraded to ON_DEVICE_ONLY, so nothing falls back to the network.
+ */
+export function effectiveRoute(route: Route, cloudEnabled: boolean): Route {
+  return cloudEnabled || !canReachCloud(route) ? route : 'ON_DEVICE_ONLY'
+}

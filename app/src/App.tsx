@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { isFirebaseConfigured } from './ai/env'
+import { DEFAULT_RUNTIME_CONFIG, initRuntimeConfig, type RuntimeConfig } from './ai/runtimeConfig'
 import { useDevice } from './state/useDevice'
 import { useSession, type Stage } from './state/useSession'
 import { AddStep } from './ui/AddStep'
@@ -20,6 +21,12 @@ export default function App() {
   const device = useDevice()
   const s = useSession(device.caps)
   const current = STEPS.findIndex((x) => x.id === s.stage)
+  const [runtime, setRuntime] = useState<RuntimeConfig>(DEFAULT_RUNTIME_CONFIG)
+
+  // Firebase Remote Config: model names and a cloud kill switch. Falls back to defaults on any failure.
+  useEffect(() => {
+    void initRuntimeConfig().then(setRuntime)
+  }, [])
 
   // Dev-only design preview: /?preview=result renders the result screen from a fixture. Not in production builds.
   const { loadPreview } = s
@@ -39,6 +46,12 @@ export default function App() {
         <p className="banner banner--warn banner--top" role="status">
           <AlertIcon size={16} />
           <span>Firebase is not configured, so AI steps are off. You can still add a document and see what Veil would protect (docs/setup.md).</span>
+        </p>
+      )}
+      {!runtime.cloudEnabled && (
+        <p className="banner banner--info banner--top" role="status">
+          <AlertIcon size={16} />
+          <span>Cloud explanations are paused. Veil is running entirely on this device with Gemini Nano.</span>
         </p>
       )}
       <Header device={device} />

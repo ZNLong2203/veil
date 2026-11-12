@@ -6,8 +6,9 @@ import {
   type ModelParams,
   type OnDeviceParams,
 } from 'firebase/ai'
-import type { Route } from '../core/policy'
+import { effectiveRoute, type Route } from '../core/policy'
 import { getAi } from './firebase'
+import { getRuntimeConfig } from './runtimeConfig'
 
 /** Route (Veil's vocabulary) → Firebase AI Logic hybrid inference mode. */
 export const INFERENCE_MODE: Record<Route, InferenceMode> = {
@@ -57,8 +58,10 @@ export function buildModel(spec: ModelSpec): GenerativeModel {
     ...(spec.schema ? { promptOptions: { responseConstraint: spec.schema } } : {}),
   }
 
-  const mode = INFERENCE_MODE[spec.route]
-  if (spec.route === 'ON_DEVICE_ONLY') {
+  // Remote Config kill switch: with the cloud off, cloud-capable routes become ON_DEVICE_ONLY.
+  const route = effectiveRoute(spec.route, getRuntimeConfig().cloudEnabled)
+  const mode = INFERENCE_MODE[route]
+  if (route === 'ON_DEVICE_ONLY') {
     return getGenerativeModel(getAi(), { mode, onDeviceParams })
   }
 

@@ -60,10 +60,11 @@ Technical details worth a look:
 - The ledger uses the SDK-reported `inferenceSource`. A raw-data task that somehow ran off-device has its result discarded.
 - A **policy invariant** (raw input ⇒ `ONLY_ON_DEVICE`) is unit-tested and asserted at startup.
 - Text-only sessions declare only text inputs so they work without Chrome's multimodal flag.
+- **Remote Config** controls the cloud model names and a kill switch (`cloud_enabled=false` makes every step on-device only), with validated values and safe defaults.
 
 ## How we built it
 
-TypeScript, React and Vite; Firebase AI Logic with Gemini Nano (Chrome Prompt API) and Gemini; Firebase App Check and Hosting.
+TypeScript, React and Vite; Firebase AI Logic with Gemini Nano (Chrome Prompt API) and Gemini; Firebase App Check, Remote Config and Hosting.
 The privacy-critical logic lives in a framework-free `core/` module with unit tests (detectors, vault, egress guard, routing
 policy, and `runTask` against a fake hybrid model). Developed with Claude Code as an AI coding assistant.
 
@@ -100,7 +101,7 @@ exposure of a cloud chatbot, and shows the evidence.
 
 ## Built with
 
-firebase-ai-logic, gemini-nano, gemini, firebase-app-check, firebase-hosting, chrome-prompt-api, typescript, react, vite, vitest
+firebase-ai-logic, gemini-nano, gemini, firebase-app-check, firebase-remote-config, firebase-hosting, chrome-prompt-api, typescript, react, vite, vitest
 
 ## Testing instructions for judges
 
