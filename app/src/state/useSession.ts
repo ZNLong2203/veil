@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { isFirebaseConfigured } from '../ai/env'
 import { NotConfiguredError } from '../ai/firebase'
 import {
@@ -57,8 +57,7 @@ export function friendlyError(e: unknown): string {
 }
 
 export function useSession(device: DeviceCapabilities | null) {
-  const vaultRef = useRef(new Vault())
-  const vault = vaultRef.current
+  const [vault] = useState(() => new Vault())
   const [version, setVersion] = useState(0)
   const bump = () => setVersion((v) => v + 1)
 
