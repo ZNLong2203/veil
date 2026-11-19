@@ -7,6 +7,10 @@ app/src
 │   ├── vault.ts     value ⇄ placeholder map ([PERSON_1]); apply / segments / rehydrate; lives in memory only
 │   ├── egress.ts    Last check before any cloud-capable request; reports kinds and counts, never values
 │   ├── policy.ts    Task → route table and the invariant "raw input ⇒ ON_DEVICE_ONLY"
+│   ├── planner.ts   Custom routing: language guess, signals → plan (what runs where, and why)
+│   ├── wire.ts      Wire log, request classification, independent re-check of request bodies
+│   ├── receipt.ts   Privacy receipt (counts, categories, hashes; never text)
+│   ├── ics.ts       RFC 5545 writer for deadline reminders
 │   ├── redact.ts    Rules first, then an injected on-device detector, chunked to fit Gemini Nano
 │   ├── ledger.ts    Append-only record of where each AI step ran; sizes and counts only
 │   └── chunk.ts     Paragraph/sentence chunking for the on-device context window
@@ -15,11 +19,12 @@ app/src
 │   ├── models.ts    Route → InferenceMode; builds hybrid models (onDeviceParams / inCloudParams)
 │   ├── run.ts       runTask(): egress guard → generateContent → inferenceSource → ledger
 │   ├── tasks.ts     readImage, findEntities, triage, explain, followUp, prompts
+│   ├── wireTap.ts   Records cross-origin fetches (never headers or query strings)
 │   ├── runtimeConfig.ts  Firebase Remote Config: model names, cloud kill switch, offline text budget (safe defaults)
 │   ├── schemas.ts   JSON Schemas shared by the on-device and cloud backends
 │   └── device.ts    Gemini Nano availability probe and download (via initializeDeviceModel)
 ├── state/     React hooks: session state machine, device status
-└── ui/        Add / Review / Understand steps, Privacy Ledger, header chips
+└── ui/        Add / Review / Understand steps, Route plan, Action kit, Privacy Ledger, Wire view, header chips
 ```
 
 ## Data flow
@@ -47,6 +52,17 @@ sequenceDiagram
 
 If the network is down, `PREFER_IN_CLOUD` falls back to Gemini Nano with a compact schema and a truncated, still-redacted
 document (the SDK falls back on `FETCH_ERROR`, `ERROR` and `API_NOT_ENABLED`).
+
+## Custom routing
+
+`planRoutes(signals)` is pure. Signals: document size and language, `navigator.onLine`, `connection.saveData`, battery level and
+charging state, Gemini Nano status, and the Remote Config kill switch. Examples of decisions it makes:
+
+- raw-data step: always `ONLY_ON_DEVICE`; skipped (and review required) when Nano is not ready, never replaced by the cloud;
+- triage: on-device normally, cloud (redacted) when the battery is below 20% and not charging;
+- explain / follow-up / draft: cloud normally; fully on-device with a compact schema when offline or when the kill switch is off.
+
+The UI shows the plan before anything runs, so each decision has a visible reason.
 
 ## Why these modes
 

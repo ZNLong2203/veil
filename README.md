@@ -16,13 +16,19 @@ of birth, address, member and claim numbers, card and account numbers.
 ## What Veil does
 
 1. **Add** a document: paste text, open a file, or take a photo. Photos are read by Gemini Nano **on-device only**.
-2. **Review** what stays on your device. Deterministic rules plus Gemini Nano find personal data. You see every protected
-   value highlighted, can add or remove any, and can inspect **exactly** what would be sent.
-3. **Understand**: a plain-language summary, deadlines, red flags, key facts, next steps, questions to ask, and follow-ups,
-   in 11 languages. Real names are filled back in locally.
+2. **Review** what stays on your device. Deterministic rules plus Gemini Nano find personal data. You see your document and
+   the exact redacted copy side by side, can add or remove values, and see a **route plan**: what will run where for this
+   document and this device, and why.
+3. **Understand**: a plain-language summary, deadlines, red flags, key facts, next steps and questions to ask, in 11 languages.
+   Real names are filled back in locally.
+4. **Do the next thing** with the **action kit**: a drafted dispute letter or phone script (the cloud writes with
+   placeholders, your real details are filled in on this device and highlighted), and an `.ics` file with the deadlines.
 
-A live **Privacy Ledger** shows, for every AI step, where it really ran (`on this device`, `cloud`, `blocked`) and how many
-characters left the device.
+Two panels make the privacy claim checkable instead of asking for trust:
+
+- the **Privacy Ledger** shows, for every AI step, where it ran (`this device`, `cloud`, `blocked`);
+- **On the wire** records every request that really left the tab, re-checks those bytes independently, shows the exact text
+  that was sent, and exports a **privacy receipt** (counts, categories and hashes, never your text).
 
 ## How hybrid inference is used
 
@@ -36,6 +42,11 @@ declares what kind of input it handles, and that decides which `InferenceMode` i
 | Identify document type | redacted | `PREFER_ON_DEVICE` | Short and free on-device; cloud fallback is safe because input is redacted. |
 | Explain, translate | redacted | `PREFER_IN_CLOUD` | Long documents need the larger model; offline, Gemini Nano takes over with a shorter English summary. |
 | Follow-up questions | redacted | `PREFER_IN_CLOUD` | Same. Chat is not available on-device, so each question is a self-contained prompt. |
+| Draft letter / call script | redacted | `PREFER_IN_CLOUD` | The cloud writes with placeholders; real values are filled in locally. |
+
+The static table says what each task *may* do. A **route planner** ([`planner.ts`](app/src/core/planner.ts)) decides what it *will* do for this
+document and device: language (Gemini Nano officially supports en/es/ja), size, connectivity, data saver, battery, Nano status and a
+Remote Config kill switch. A language outside Nano's list still runs on-device but is best-effort and needs the user's confirmation.
 
 Guarantees enforced in code and covered by tests:
 
@@ -45,6 +56,8 @@ Guarantees enforced in code and covered by tests:
   is re-checked against the vault and the detectors. Anything that still looks personal is blocked and logged.
 - **Evidence, not promises** ([`run.ts`](app/src/ai/run.ts)): the ledger is built from the SDK's reported `inferenceSource`.
   If a raw-data task somehow ran in the cloud, its result is discarded.
+- **The planner can never re-route raw data**: whatever the signals, the raw-data step stays `ONLY_ON_DEVICE` (tested over every signal mix).
+- **Independent wire check**: [`wireTap.ts`](app/src/ai/wireTap.ts) records real requests at the network layer and re-checks the bodies.
 - **One schema, two backends**: the same JSON Schema drives structured output on-device (`responseConstraint`) and in the
   cloud (`responseJsonSchema`) ([`models.ts`](app/src/ai/models.ts)).
 

@@ -16,7 +16,11 @@ For the document you give it:
    Over-protecting costs little, since real values are filled back in on your device for display.
 7. The **self-test** button sends the original document through the real cloud-bound path with a stub model; the guard must
    block it, which demonstrates the guarantee without sending anything.
-8. The Privacy Ledger shows what actually happened, using the SDK's reported `inferenceSource`, and stores sizes and counts,
+8. **On the wire** records every cross-origin request at the network layer and re-checks the bodies with the vault and the
+   detectors, independently of the app's own guard. It never stores headers or query strings (they carry keys and tokens).
+9. The **privacy receipt** contains counts, categories and SHA-256 hashes only, never document text or personal values (tested,
+   including the case where a request does leak).
+10. The Privacy Ledger shows what actually happened, using the SDK's reported `inferenceSource`, and stores sizes and counts,
    never text.
 
 ## What Veil does not promise
@@ -37,6 +41,7 @@ For the document you give it:
 
 | Threat | Mitigation |
 |---|---|
+| The app's own bookkeeping is wrong or bypassed | The wire view observes the real requests independently of `runTask` |
 | Hybrid SDK silently falls back to the cloud for a raw-data step | Raw-data tasks use `ONLY_ON_DEVICE` with no cloud config; policy invariant tested and asserted at startup; result discarded if source is not on-device |
 | Redaction misses a value the user already knows about | Review step: select-to-protect; vault applies to every occurrence, case-insensitively |
 | Model hallucinates an entity | Entities must literally occur in the chunk they came from |

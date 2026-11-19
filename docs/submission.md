@@ -37,7 +37,12 @@ Veil turns a sensitive document into a plain-language explanation while keeping 
 3. **Understand**. Gemini in the cloud explains the *redacted* text: summary, deadlines, red flags, key facts, next steps and
    questions to ask, in 11 languages, plus follow-up questions. Real names are filled back in locally.
 
-A **Privacy Ledger** shows for every AI step whether it ran on the device or in the cloud, and how many characters were sent.
+4. **Do the next thing**. An action kit drafts a dispute letter or a phone script and exports deadlines to a calendar. The cloud
+   writes with placeholders such as `[PERSON_1]`; the user's real name, address and reference numbers are filled in on the device and
+   highlighted, so the cloud never sees them.
+
+Two panels make the privacy claim checkable: a **Privacy Ledger** showing where each AI step ran, and an **On the wire** view that
+records the requests that really left the browser, re-checks them, shows the exact text sent and exports a privacy receipt.
 
 ## How we use Firebase AI Logic
 
@@ -51,6 +56,12 @@ Each task declares the kind of input it handles, and that selects the only modes
   the input is already redacted.
 - `PREFER_IN_CLOUD`: the explanation and follow-ups on redacted text. Offline, the SDK falls back to Gemini Nano and Veil
   switches to a compact schema and a truncated document for a shorter English summary.
+
+A **route planner** adds custom routing on top of those modes. For each document it weighs language (Gemini Nano officially supports
+English, Spanish and Japanese), size, connectivity, data saver, battery, Nano status and a Remote Config kill switch, and shows the plan
+and the reason for every step before anything runs. A language outside Nano's list still runs on-device but is best-effort and needs the
+user's confirmation. We measured this: Nano extracted Vietnamese names and addresses correctly even though Chrome reports that language as
+unavailable.
 
 Technical details worth a look:
 
