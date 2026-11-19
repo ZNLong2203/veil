@@ -1,7 +1,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, ReCaptchaV3Provider } from 'firebase/app-check'
 import { getAI, GoogleAIBackend, type AI } from 'firebase/ai'
-import { appCheckDebugToken, appCheckSiteKey, firebaseConfig, isFirebaseConfigured } from './env'
+import { appCheckDebugToken, appCheckProvider, appCheckSiteKey, firebaseConfig, isFirebaseConfigured } from './env'
 
 export class NotConfiguredError extends Error {
   constructor() {
@@ -28,7 +28,7 @@ export function getFirebaseApp(): FirebaseApp {
 
   if (appCheckSiteKey) {
     initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(appCheckSiteKey),
+      provider: appCheckProvider === 'enterprise' ? new ReCaptchaEnterpriseProvider(appCheckSiteKey) : new ReCaptchaV3Provider(appCheckSiteKey),
       isTokenAutoRefreshEnabled: true,
     })
   } else {

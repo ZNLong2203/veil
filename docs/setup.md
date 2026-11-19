@@ -18,6 +18,9 @@ Firebase AI Logic enforces App Check, so cloud calls are rejected without it.
 2. **Firebase console → App Check → Apps → your web app → reCAPTCHA v3**, paste the *secret* key.
 3. Put the *site* key in `VITE_APPCHECK_RECAPTCHA_SITE_KEY`.
 
+If you created a **reCAPTCHA Enterprise** key instead (Google Cloud console), register the app with the *reCAPTCHA Enterprise* provider in
+App Check (no secret key is needed) and set `VITE_APPCHECK_PROVIDER=enterprise`.
+
 **Local development and judging (debug token)**
 
 1. Set `VITE_APPCHECK_DEBUG_TOKEN=true` and run the app. The browser console prints
