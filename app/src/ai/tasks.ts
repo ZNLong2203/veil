@@ -1,6 +1,6 @@
 import { chunkText } from '../core/chunk'
 import { detectWithRules } from '../core/rules'
-import { PII_KINDS, type PiiKind, type Span } from '../core/types'
+import type { PiiKind, Span } from '../core/types'
 import type { EntityDetector } from '../core/redact'
 import type { Vault } from '../core/vault'
 import { buildModel } from './models'
@@ -19,11 +19,13 @@ import {
 const PLACEHOLDER_RULES = `The document has had personal data replaced by placeholders such as [PERSON_1], [ADDRESS_2] or [IDNUM_3].
 Keep placeholders exactly as written. Never guess, reconstruct or ask for the real value behind a placeholder.`
 
-const SYSTEM_ENTITIES = `You are a privacy filter running on the user's own device.
-Read the document excerpt and list every piece of personal information that identifies a private individual:
-names of people (never organisations, hospitals, banks or places), home or mailing addresses, phone numbers,
-email addresses, government / insurance / claim / policy / account numbers, and dates of birth.
-Copy each value exactly as it is written. Do not invent anything. If there is nothing, return an empty list.`
+const SYSTEM_ENTITIES = `You are a privacy filter running on the user's own device. Read the document excerpt and extract only:
+- "people": the full name of every private individual, wherever it appears: headers, body text, signatures such as "Sincerely, Marcus Finch", titles such as "Dr. Elena Park". Copy each name exactly as written.
+- "addresses": every home or mailing address, exactly as written.
+Never include companies, organisations, hospitals, banks or job titles. Never return phone numbers, emails, ID or account numbers, dates, or labels such as "Tel:" or "Patient:". Return only the values. If there are none, return empty lists.
+
+Example excerpt: "Tenant: Li Wei, 5 Oak Lane, Reno NV 89501. Managed by Acme Realty. Signed, Dana Cole (Manager). Call 555-0100."
+Example output: {"people":["Li Wei","Dana Cole"],"addresses":["5 Oak Lane, Reno NV 89501"]}`
 
 const SYSTEM_TRIAGE = `You classify documents. ${PLACEHOLDER_RULES}
 Return the document type, how urgent it looks (high if there is a near deadline, penalty, or threat of loss), and its language.`
@@ -75,27 +77,32 @@ export async function readImage(vault: Vault, base64: string, mimeType: 'image/j
 /* ───────────────── 2. find personal data (on-device only) ───────────────── */
 
 interface RawEntities {
-  entities?: Array<{ text?: unknown; kind?: unknown }>
+  people?: unknown
+  addresses?: unknown
 }
+
+const asStrings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
 /** Validates model output: every entity must literally occur in the chunk it was found in. */
 export function entitiesToSpans(raw: RawEntities, chunk: string): Span[] {
   const hay = squash(chunk)
   const spans: Span[] = []
-  for (const e of raw.entities ?? []) {
-    if (typeof e.text !== 'string') continue
-    const text = e.text.trim()
-    if (text.length < 2 || text.length > 120) continue
-    const at = hay.indexOf(squash(text))
-    if (at < 0) continue // hallucinated value: ignore
-    const kind: PiiKind = (PII_KINDS as readonly string[]).includes(e.kind as string) ? (e.kind as PiiKind) : 'OTHER'
-    spans.push({ start: at, end: at + text.length, kind, text, source: 'on-device' })
+  const take = (values: string[], kind: PiiKind) => {
+    for (const value of values) {
+      const text = value.trim()
+      if (text.length < 2 || text.length > 120) continue
+      const at = hay.indexOf(squash(text))
+      if (at < 0) continue // hallucinated value: ignore
+      spans.push({ start: at, end: at + text.length, kind, text, source: 'on-device' })
+    }
   }
+  take(asStrings(raw.people), 'PERSON')
+  take(asStrings(raw.addresses), 'ADDRESS')
   return spans
 }
 
 /** Builds the detector injected into `buildRedaction`. Throws if Gemini Nano is not available. */
-export function makeEntityDetector(vault: Vault): EntityDetector {
+export function makeEntityDetector(vault: Vault, onRaw?: (rawModelText: string) => void): EntityDetector {
   const model = buildModel({ route: 'ON_DEVICE_ONLY', system: SYSTEM_ENTITIES, schema: ENTITY_SCHEMA })
   return async (chunk) => {
     const { text } = await runTask({
@@ -105,6 +112,7 @@ export function makeEntityDetector(vault: Vault): EntityDetector {
       outbound: '',
       vault,
     })
+    onRaw?.(text)
     return entitiesToSpans(parseJson<RawEntities>(text), chunk)
   }
 }

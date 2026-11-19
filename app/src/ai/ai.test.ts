@@ -67,19 +67,23 @@ describe('runTask — privacy contract', () => {
 })
 
 describe('model output handling', () => {
-  it('keeps only entities that literally occur in the chunk', () => {
-    const chunk = 'Please call Priya Natarajan about the lease.'
+  it('keeps only names and addresses that literally occur in the chunk', () => {
+    const chunk = 'Please call Priya Natarajan about the lease at 77 Harbor View Road. Sincerely, Marcus Finch'
     const spans = entitiesToSpans(
-      { entities: [{ text: 'Priya  Natarajan', kind: 'PERSON' }, { text: 'Elon Musk', kind: 'PERSON' }, { text: 'x', kind: 'PERSON' }] },
+      { people: ['Priya  Natarajan', 'Marcus Finch', 'Elon Musk', 'x'], addresses: ['77 Harbor View Road', '1 Nowhere Lane'] },
       chunk,
     )
-    expect(spans.map((s) => s.text)).toEqual(['Priya  Natarajan'])
-    expect(spans[0]).toMatchObject({ kind: 'PERSON', source: 'on-device' })
+    expect(spans.map((s) => [s.kind, s.text])).toEqual([
+      ['PERSON', 'Priya  Natarajan'],
+      ['PERSON', 'Marcus Finch'],
+      ['ADDRESS', '77 Harbor View Road'],
+    ])
+    expect(spans.every((s) => s.source === 'on-device')).toBe(true)
   })
 
-  it('maps unknown kinds to OTHER', () => {
-    const [s] = entitiesToSpans({ entities: [{ text: 'Blue Fox', kind: 'NICKNAME' }] }, 'They call him Blue Fox.')
-    expect(s.kind).toBe('OTHER')
+  it('tolerates malformed model output instead of throwing', () => {
+    expect(entitiesToSpans({ people: 'Priya', addresses: [42, null] }, 'Priya')).toEqual([])
+    expect(entitiesToSpans({}, 'anything')).toEqual([])
   })
 
   it('fills missing explanation fields instead of crashing the UI', () => {

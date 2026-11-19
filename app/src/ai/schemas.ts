@@ -1,26 +1,15 @@
-import { PII_KINDS } from '../core/types'
-
 type Json = Record<string, unknown>
 
 const str = (description?: string): Json => ({ type: 'string', ...(description ? { description } : {}) })
 const list = (items: Json): Json => ({ type: 'array', items })
 const obj = (properties: Json, required: string[]): Json => ({ type: 'object', properties, required })
 
-/** On-device only: the entities Gemini Nano finds in a chunk of the raw document. */
-export const ENTITY_SCHEMA = obj(
-  {
-    entities: list(
-      obj(
-        {
-          text: str('The value exactly as written in the document'),
-          kind: { type: 'string', enum: [...PII_KINDS] },
-        },
-        ['text', 'kind'],
-      ),
-    ),
-  },
-  ['entities'],
-)
+/**
+ * On-device only. Pattern rules already cover structured identifiers (emails, phone/ID/card numbers),
+ * so Gemini Nano is asked only for what rules cannot know: people's names and addresses in free text.
+ * Two flat lists are far easier for a small model than a typed list of nine categories.
+ */
+export const ENTITY_SCHEMA = obj({ people: list(str()), addresses: list(str()) }, ['people', 'addresses'])
 
 export const DOC_TYPES = [
   'medical bill',
