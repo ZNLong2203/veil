@@ -4,7 +4,7 @@ import { EgressBlockedError } from '../core/egress'
 import { ledger, summarize } from '../core/ledger'
 import { Vault } from '../core/vault'
 import { runTask } from './run'
-import { entitiesToSpans, normalizeExplanation, redactQuestion, withCloudFallback, type Attempt } from './tasks'
+import { entitiesToSpans, normalizeExplanation, onGenerationProgress, redactQuestion, withCloudFallback, type Attempt } from './tasks'
 
 /** A stand-in for a Firebase AI Logic hybrid model. Only the parts `runTask` touches. */
 function fakeModel(source: 'on_device' | 'in_cloud' | undefined, text = '{}', onCall?: () => void) {
@@ -153,6 +153,16 @@ describe('withCloudFallback', () => {
   it('reports the first (cloud) error when everything fails, not the last device error', async () => {
     const r = runner(99)
     await expect(withCloudFallback(prefer, models, r.attempt)).rejects.toThrow('cloud failure 1')
+  })
+
+  it('tells the UI why it is taking longer when it retries or falls back', async () => {
+    const messages: string[] = []
+    onGenerationProgress((m) => messages.push(m))
+    await withCloudFallback(prefer, models, runner(2).attempt)
+    onGenerationProgress(null)
+    expect(messages).toHaveLength(2)
+    expect(messages[0]).toMatch(/slow/i)
+    expect(messages[1]).toMatch(/Gemini Nano/)
   })
 
   it('never retries a blocked egress', async () => {

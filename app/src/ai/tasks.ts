@@ -186,7 +186,15 @@ export interface Attempt {
   timeoutMs?: number
 }
 
-export const CLOUD_TIMEOUT_MS = 20_000
+/** First cloud try gives up sooner: typical answers take 3-12 s, and the long tail is not worth waiting for. */
+export const CLOUD_TIMEOUT_MS = 15_000
+export const CLOUD_RETRY_TIMEOUT_MS = 20_000
+
+let progressListener: ((message: string) => void) | null = null
+/** Lets the UI show why a step is taking longer (a slow model, a retry, the on-device fallback). */
+export const onGenerationProgress = (fn: ((message: string) => void) | null) => {
+  progressListener = fn
+}
 
 /**
  * Model-level resilience in front of the SDK's own cloud-to-device fallback. For a cloud-preferred
@@ -204,11 +212,18 @@ export async function withCloudFallback<T>(
     return { value: await attempt({ route: choice.route, cloudModel: models.main, compact: choice.compact }), compact: choice.compact }
   }
   const tries: Attempt[] = [{ route: 'CLOUD_ONLY', cloudModel: models.main, compact: false, timeoutMs: CLOUD_TIMEOUT_MS }]
-  if (models.lite && models.lite !== models.main) tries.push({ route: 'CLOUD_ONLY', cloudModel: models.lite, compact: false, timeoutMs: CLOUD_TIMEOUT_MS })
+  if (models.lite && models.lite !== models.main) tries.push({ route: 'CLOUD_ONLY', cloudModel: models.lite, compact: false, timeoutMs: CLOUD_RETRY_TIMEOUT_MS })
   tries.push({ route: 'ON_DEVICE_ONLY', cloudModel: models.main, compact: true })
 
   let first: unknown
-  for (const t of tries) {
+  for (const [i, t] of tries.entries()) {
+    if (i > 0) {
+      progressListener?.(
+        t.route === 'ON_DEVICE_ONLY'
+          ? 'The cloud is busy. Writing a shorter version on this device with Gemini Nano…'
+          : 'The first cloud model is slow. Trying a faster one…',
+      )
+    }
     try {
       return { value: await attempt(t), compact: t.compact }
     } catch (e) {

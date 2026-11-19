@@ -5,6 +5,7 @@ import {
   draftAction,
   explain,
   followUp,
+  onGenerationProgress,
   makeEntityDetector,
   readImage,
   triage,
@@ -98,11 +99,13 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
   const run = useCallback(async (label: string, fn: () => Promise<void>) => {
     setError(null)
     setBusy({ label })
+    onGenerationProgress((message) => setBusy({ label: message }))
     try {
       await fn()
     } catch (e) {
       setError(friendlyError(e))
     } finally {
+      onGenerationProgress(null)
       setBusy(null)
     }
   }, [])
