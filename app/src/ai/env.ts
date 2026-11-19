@@ -19,5 +19,5 @@ export const appCheckSiteKey = (import.meta.env.VITE_APPCHECK_RECAPTCHA_SITE_KEY
 export const appCheckProvider: 'v3' | 'enterprise' = import.meta.env.VITE_APPCHECK_PROVIDER === 'enterprise' ? 'enterprise' : 'v3'
 export const appCheckDebugToken = (import.meta.env.VITE_APPCHECK_DEBUG_TOKEN as string | undefined) || undefined
 
-export const CLOUD_MODEL = (import.meta.env.VITE_CLOUD_MODEL as string | undefined) || 'gemini-3.6-flash'
-export const CLOUD_MODEL_LITE = (import.meta.env.VITE_CLOUD_MODEL_LITE as string | undefined) || 'gemini-3.5-flash-lite'
+export const CLOUD_MODEL = (import.meta.env.VITE_CLOUD_MODEL as string | undefined) || 'gemini-3.5-flash-lite'
+export const CLOUD_MODEL_LITE = (import.meta.env.VITE_CLOUD_MODEL_LITE as string | undefined) || 'gemini-3.1-flash-lite'
