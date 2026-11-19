@@ -73,6 +73,7 @@ The UI shows the plan before anything runs, so each decision has a visible reaso
 | Gemini Nano may be missing (other browsers, weak hardware, not downloaded) | Rules still run; review requires explicit confirmation; explanations still work through the cloud on redacted text. |
 | Same output shape on both backends | One JSON Schema → `responseConstraint` (on-device) and `responseJsonSchema` (cloud). |
 | Default SDK session asks for image input | Text-only models declare only text inputs, so they work without the multimodal flag. |
+| A busy cloud model must not hang the UI | The SDK waits 180 s by default. Cloud-preferred steps run as a chain with a 20 s timeout per try (main model, lighter model, then the compact on-device variant). Each try is a ledger entry, so a failure is visible, and a blocked egress is never retried. |
 | Cloud must be switchable without a deploy | Remote Config `cloud_enabled=false` downgrades every cloud-capable route to `ON_DEVICE_ONLY` (`effectiveRoute`). Remote values are validated and only applied when they truly came from the server. |
 | Proof, not promises | Ledger entries use the SDK-reported `inferenceSource`. A raw-data task that ran off-device has its result discarded. |
 

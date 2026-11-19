@@ -46,6 +46,8 @@ export interface ModelSpec {
   cloudModel?: string
   image?: boolean
   temperature?: number
+  /** Abort a cloud request after this long (the SDK default is 180 s). */
+  timeoutMs?: number
 }
 
 /**
@@ -75,5 +77,5 @@ export function buildModel(spec: ModelSpec): GenerativeModel {
       ...(spec.schema ? { responseMimeType: 'application/json', responseJsonSchema: spec.schema } : {}),
     },
   }
-  return getGenerativeModel(getAi(), { mode, onDeviceParams, inCloudParams })
+  return getGenerativeModel(getAi(), { mode, onDeviceParams, inCloudParams }, spec.timeoutMs ? { timeout: spec.timeoutMs } : undefined)
 }

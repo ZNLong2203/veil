@@ -40,7 +40,7 @@ declares what kind of input it handles, and that decides which `InferenceMode` i
 | Read a photo | raw image | `ONLY_ON_DEVICE` | The photo contains everything about you. Never uploaded. |
 | Find personal data | raw text | `ONLY_ON_DEVICE` | Needs the original text, so it can never fall back to the cloud. |
 | Identify document type | redacted | `PREFER_ON_DEVICE` | Short and free on-device; cloud fallback is safe because input is redacted. |
-| Explain, translate | redacted | `PREFER_IN_CLOUD` | Long documents need the larger model; offline, Gemini Nano takes over with a shorter English summary. |
+| Explain, translate | redacted | `PREFER_IN_CLOUD` | Long documents need the larger model; offline, Gemini Nano takes over with a shorter English summary. Run as a short chain with a 20 s timeout per cloud try: main model, lighter model, then the compact on-device variant. |
 | Follow-up questions | redacted | `PREFER_IN_CLOUD` | Same. Chat is not available on-device, so each question is a self-contained prompt. |
 | Draft letter / call script | redacted | `PREFER_IN_CLOUD` | The cloud writes with placeholders; real values are filled in locally. |
 

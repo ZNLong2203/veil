@@ -44,8 +44,8 @@ explanations use the cloud model on redacted text.
 
 ## 4. Models
 
-`VITE_CLOUD_MODEL` (default `gemini-3.5-flash`) is used for the explanation. `VITE_CLOUD_MODEL_LITE`
-(default `gemini-3.5-flash-lite`) is the cloud fallback for light on-device-first tasks. Model names change; check the
+`VITE_CLOUD_MODEL` (default `gemini-3.6-flash`) is used for the explanation. `VITE_CLOUD_MODEL_LITE`
+(default `gemini-3.5-flash-lite`) is the cloud fallback for light on-device-first tasks. The cloud steps run as a chain with a 20 s timeout per try (main model, then the lighter one, then the compact on-device variant), because a busy model can otherwise hold a request for minutes. Newer previews such as `gemini-3.8-flash` existed but returned "high demand" errors when tested, so prefer a model that answers reliably. Model names change; check the
 [Firebase AI Logic model list](https://firebase.google.com/docs/ai-logic/models).
 
 ## 5. Remote Config (optional)

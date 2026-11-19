@@ -4,7 +4,7 @@ import { EgressBlockedError } from '../core/egress'
 import { ledger, summarize } from '../core/ledger'
 import { Vault } from '../core/vault'
 import { runTask } from './run'
-import { entitiesToSpans, normalizeExplanation, redactQuestion } from './tasks'
+import { entitiesToSpans, normalizeExplanation, redactQuestion, withCloudFallback, type Attempt } from './tasks'
 
 /** A stand-in for a Firebase AI Logic hybrid model. Only the parts `runTask` touches. */
 function fakeModel(source: 'on_device' | 'in_cloud' | undefined, text = '{}', onCall?: () => void) {
@@ -106,5 +106,69 @@ describe('model output handling', () => {
     expect(redactQuestion('Can Jordan Rivera appeal? Email me at jr@example.com', vault)).toBe(
       'Can [PERSON_1] appeal? Email me at [EMAIL_1]',
     )
+  })
+})
+
+describe('withCloudFallback', () => {
+  const models = { main: 'big', lite: 'small' }
+  const prefer = { route: 'PREFER_CLOUD' as const, compact: false }
+
+  /** An attempt runner that records what it was asked to do and fails the first `failures` times. */
+  function runner(failures: number) {
+    const seen: Attempt[] = []
+    return {
+      seen,
+      attempt: async (a: Attempt) => {
+        seen.push(a)
+        if (seen.length <= failures) throw new Error(`cloud failure ${seen.length}`)
+        return `ok from ${a.route}/${a.cloudModel}`
+      },
+    }
+  }
+
+  it('uses the main model first and stops at the first success', async () => {
+    const r = runner(0)
+    const out = await withCloudFallback(prefer, models, r.attempt)
+    expect(out).toEqual({ value: 'ok from CLOUD_ONLY/big', compact: false })
+    expect(r.seen).toHaveLength(1)
+    expect(r.seen[0].timeoutMs).toBeGreaterThan(0)
+  })
+
+  it('falls back to the lighter cloud model, then to the compact on-device variant', async () => {
+    const lite = runner(1)
+    expect((await withCloudFallback(prefer, models, lite.attempt)).value).toBe('ok from CLOUD_ONLY/small')
+
+    const device = runner(2)
+    const out = await withCloudFallback(prefer, models, device.attempt)
+    expect(out).toEqual({ value: 'ok from ON_DEVICE_ONLY/big', compact: true })
+    expect(device.seen.map((a) => a.route)).toEqual(['CLOUD_ONLY', 'CLOUD_ONLY', 'ON_DEVICE_ONLY'])
+  })
+
+  it('skips the lighter attempt when it is the same model', async () => {
+    const r = runner(1)
+    await withCloudFallback(prefer, { main: 'same', lite: 'same' }, r.attempt)
+    expect(r.seen.map((a) => a.route)).toEqual(['CLOUD_ONLY', 'ON_DEVICE_ONLY'])
+  })
+
+  it('reports the first (cloud) error when everything fails, not the last device error', async () => {
+    const r = runner(99)
+    await expect(withCloudFallback(prefer, models, r.attempt)).rejects.toThrow('cloud failure 1')
+  })
+
+  it('never retries a blocked egress', async () => {
+    const seen: Attempt[] = []
+    const blocked = async (a: Attempt) => {
+      seen.push(a)
+      throw new EgressBlockedError([{ kind: 'EMAIL', via: 'rules', count: 1 }])
+    }
+    await expect(withCloudFallback(prefer, models, blocked)).rejects.toBeInstanceOf(EgressBlockedError)
+    expect(seen).toHaveLength(1)
+  })
+
+  it('runs a single attempt, unchanged, for routes that are not cloud-preferred', async () => {
+    const r = runner(0)
+    const out = await withCloudFallback({ route: 'ON_DEVICE_ONLY', compact: true }, models, r.attempt)
+    expect(out.compact).toBe(true)
+    expect(r.seen).toEqual([{ route: 'ON_DEVICE_ONLY', cloudModel: 'big', compact: true }])
   })
 })

@@ -1,9 +1,11 @@
 import { chunkText } from '../core/chunk'
+import { EgressBlockedError } from '../core/egress'
 import type { Route } from '../core/policy'
 import { detectWithRules } from '../core/rules'
 import type { PiiKind, Span } from '../core/types'
 import type { EntityDetector } from '../core/redact'
 import { Vault } from '../core/vault'
+import { NotConfiguredError } from './firebase'
 import { buildModel } from './models'
 import { runTask, type RunResult } from './run'
 import { getRuntimeConfig } from './runtimeConfig'
@@ -176,15 +178,62 @@ export interface GenChoice {
 /** Fallback when no plan is supplied: prefer the cloud, go compact when offline or the cloud is off. */
 export const defaultGenChoice = (): GenChoice => ({ route: 'PREFER_CLOUD', compact: isOffline() || !getRuntimeConfig().cloudEnabled })
 
+/** One try at a generation step: which route, which cloud model, which variant. */
+export interface Attempt {
+  route: Route
+  cloudModel: string
+  compact: boolean
+  timeoutMs?: number
+}
+
+export const CLOUD_TIMEOUT_MS = 20_000
+
+/**
+ * Model-level resilience in front of the SDK's own cloud-to-device fallback. For a cloud-preferred
+ * step: try the main model, then the lighter one (each with a short timeout, because a busy model can
+ * otherwise hold a request for minutes), and only then run the short variant on-device. If everything
+ * fails, the first (cloud) error is reported, since that is the real cause. A blocked egress or a
+ * missing configuration is never retried.
+ */
+export async function withCloudFallback<T>(
+  choice: GenChoice,
+  models: { main: string; lite: string },
+  attempt: (a: Attempt) => Promise<T>,
+): Promise<{ value: T; compact: boolean }> {
+  if (choice.route !== 'PREFER_CLOUD') {
+    return { value: await attempt({ route: choice.route, cloudModel: models.main, compact: choice.compact }), compact: choice.compact }
+  }
+  const tries: Attempt[] = [{ route: 'CLOUD_ONLY', cloudModel: models.main, compact: false, timeoutMs: CLOUD_TIMEOUT_MS }]
+  if (models.lite && models.lite !== models.main) tries.push({ route: 'CLOUD_ONLY', cloudModel: models.lite, compact: false, timeoutMs: CLOUD_TIMEOUT_MS })
+  tries.push({ route: 'ON_DEVICE_ONLY', cloudModel: models.main, compact: true })
+
+  let first: unknown
+  for (const t of tries) {
+    try {
+      return { value: await attempt(t), compact: t.compact }
+    } catch (e) {
+      if (e instanceof EgressBlockedError || e instanceof NotConfiguredError) throw e
+      first ??= e
+    }
+  }
+  throw first
+}
+
+/** Ledger note for a generation attempt: which cloud model ran, or that the short on-device variant did. */
+const modelNote = (a: Attempt): string | undefined => (a.route === 'CLOUD_ONLY' ? a.cloudModel : a.compact ? 'short on-device variant' : undefined)
+
+const cloudModels = () => ({ main: getRuntimeConfig().cloudModel, lite: getRuntimeConfig().cloudModelLite })
+
 export async function explain(vault: Vault, redacted: string, language: string, choice: GenChoice = defaultGenChoice()): Promise<ExplainResult> {
-  const { route, compact } = choice
-  const model = compact
-    ? buildModel({ route, system: SYSTEM_COMPACT, schema: EXPLAIN_COMPACT_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
-    : buildModel({ route, system: explainSystem(language), schema: EXPLAIN_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
-  const body = compact ? redacted.slice(0, getRuntimeConfig().compactMaxChars) : redacted
-  const prompt = `Document (personal data replaced by placeholders):\n"""\n${body}\n"""`
-  const { text, executedOn } = await runTask({ task: 'explain', model, parts: [prompt], outbound: prompt, vault, route })
-  return { explanation: normalizeExplanation(parseJson<Partial<Explanation>>(text)), executedOn, compact }
+  const { value, compact } = await withCloudFallback(choice, cloudModels(), async (a) => {
+    const model = a.compact
+      ? buildModel({ route: a.route, system: SYSTEM_COMPACT, schema: EXPLAIN_COMPACT_SCHEMA, cloudModel: a.cloudModel, timeoutMs: a.timeoutMs })
+      : buildModel({ route: a.route, system: explainSystem(language), schema: EXPLAIN_SCHEMA, cloudModel: a.cloudModel, timeoutMs: a.timeoutMs })
+    const body = a.compact ? redacted.slice(0, getRuntimeConfig().compactMaxChars) : redacted
+    const prompt = `Document (personal data replaced by placeholders):\n"""\n${body}\n"""`
+    return runTask({ task: 'explain', model, parts: [prompt], outbound: prompt, vault, route: a.route, note: modelNote(a) })
+  })
+  return { explanation: normalizeExplanation(parseJson<Partial<Explanation>>(value.text)), executedOn: value.executedOn, compact }
 }
 
 export function normalizeExplanation(raw: Partial<Explanation>): Explanation {
@@ -223,14 +272,15 @@ export async function followUp(
   language: string,
   choice: GenChoice = defaultGenChoice(),
 ): Promise<{ answer: string; executedOn: RunResult['executedOn'] }> {
-  const { route, compact } = choice
-  const model = buildModel({ route, system: followUpSystem(language), schema: FOLLOWUP_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
   const safeQuestion = redactQuestion(question, vault)
   const earlier = history.map((h) => `Q: ${vault.apply(h.q)}\nA: ${vault.apply(h.a)}`).join('\n\n')
-  const doc = compact ? redactedDoc.slice(0, getRuntimeConfig().compactMaxChars) : redactedDoc
-  const prompt = `Document:\n"""\n${doc}\n"""\n\n${earlier ? `Earlier questions and answers:\n${earlier}\n\n` : ''}Question: ${safeQuestion}`
-  const { text, executedOn } = await runTask({ task: 'followUp', model, parts: [prompt], outbound: prompt, vault, route })
-  return { answer: parseJson<{ answer: string }>(text).answer, executedOn }
+  const { value } = await withCloudFallback(choice, cloudModels(), async (a) => {
+    const model = buildModel({ route: a.route, system: followUpSystem(language), schema: FOLLOWUP_SCHEMA, cloudModel: a.cloudModel, timeoutMs: a.timeoutMs })
+    const doc = a.compact ? redactedDoc.slice(0, getRuntimeConfig().compactMaxChars) : redactedDoc
+    const prompt = `Document:\n"""\n${doc}\n"""\n\n${earlier ? `Earlier questions and answers:\n${earlier}\n\n` : ''}Question: ${safeQuestion}`
+    return runTask({ task: 'followUp', model, parts: [prompt], outbound: prompt, vault, route: a.route, note: modelNote(a) })
+  })
+  return { answer: parseJson<{ answer: string }>(value.text).answer, executedOn: value.executedOn }
 }
 
 /* ───────────────────────── 6. action kit: letter or call script ───────────────────────── */
@@ -263,12 +313,13 @@ export async function draftAction(
   opts: { kind: DraftKind; topic: string; writeIn: string },
   choice: GenChoice = defaultGenChoice(),
 ): Promise<Draft> {
-  const { route, compact } = choice
-  const model = buildModel({ route, system: draftSystem(opts.kind, opts.writeIn), schema: DRAFT_SCHEMA, cloudModel: getRuntimeConfig().cloudModel, temperature: 0.4 })
-  const doc = compact ? redactedDoc.slice(0, getRuntimeConfig().compactMaxChars) : redactedDoc
   const topic = vault.apply(opts.topic)
-  const prompt = `Document (personal data replaced by placeholders):\n"""\n${doc}\n"""\n\nTopic: ${topic}`
-  const { text, executedOn } = await runTask({ task: 'draft', model, parts: [prompt], outbound: prompt, vault, route })
-  const parsed = parseJson<{ subject?: string; body?: string }>(text)
-  return { kind: opts.kind, topic, subject: parsed.subject ?? '', redactedBody: parsed.body ?? '', executedOn }
+  const { value } = await withCloudFallback(choice, cloudModels(), async (a) => {
+    const model = buildModel({ route: a.route, system: draftSystem(opts.kind, opts.writeIn), schema: DRAFT_SCHEMA, cloudModel: a.cloudModel, temperature: 0.4, timeoutMs: a.timeoutMs })
+    const doc = a.compact ? redactedDoc.slice(0, getRuntimeConfig().compactMaxChars) : redactedDoc
+    const prompt = `Document (personal data replaced by placeholders):\n"""\n${doc}\n"""\n\nTopic: ${topic}`
+    return runTask({ task: 'draft', model, parts: [prompt], outbound: prompt, vault, route: a.route, note: modelNote(a) })
+  })
+  const parsed = parseJson<{ subject?: string; body?: string }>(value.text)
+  return { kind: opts.kind, topic, subject: parsed.subject ?? '', redactedBody: parsed.body ?? '', executedOn: value.executedOn }
 }

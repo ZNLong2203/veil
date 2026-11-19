@@ -38,7 +38,7 @@ export function ResultStep({ s }: { s: Session }) {
       {compact && (
         <p className="banner banner--info" role="status">
           <AlertIcon size={16} />
-          <span>You were offline, so Gemini Nano wrote this shorter summary on your device. Reconnect for the full analysis.</span>
+          <span>The cloud was not available (or you are offline), so Gemini Nano wrote this shorter summary on your device. Try again for the full analysis.</span>
         </p>
       )}
 
