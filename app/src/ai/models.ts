@@ -18,7 +18,9 @@ export const INFERENCE_MODE: Record<Route, InferenceMode> = {
   CLOUD_ONLY: InferenceMode.ONLY_IN_CLOUD,
 }
 
-const TEXT_IN = { type: 'text' as const, languages: ['en'] }
+/** Input languages Gemini Nano supports in Chrome (verified with LanguageModel.availability). Output stays English (JSON). */
+export const NANO_INPUT_LANGUAGES = ['en', 'es', 'ja'] as const
+const TEXT_IN = { type: 'text' as const, languages: [...NANO_INPUT_LANGUAGES] }
 const TEXT_OUT = { type: 'text' as const, languages: ['en'] }
 
 /**

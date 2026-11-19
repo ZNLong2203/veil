@@ -52,6 +52,16 @@ describe('runTask — privacy contract', () => {
     ).rejects.toThrow(/Privacy contract violated/)
   })
 
+  it('ignores a planned route for raw-data tasks, so the planner can never send them to the cloud', async () => {
+    await runTask({ task: 'findEntities', model: fakeModel('on_device'), parts: ['x'], outbound: '', vault: new Vault(), route: 'PREFER_CLOUD' })
+    expect(ledger.getSnapshot()[0].route).toBe('ON_DEVICE_ONLY')
+  })
+
+  it('records the planned route for redacted-text tasks', async () => {
+    await runTask({ task: 'explain', model: fakeModel('on_device'), parts: ['x'], outbound: 'ok', vault: new Vault(), route: 'ON_DEVICE_ONLY' })
+    expect(ledger.getSnapshot()[0]).toMatchObject({ route: 'ON_DEVICE_ONLY', executedOn: 'ON_DEVICE' })
+  })
+
   it('does not run the egress guard for on-device-only tasks (raw text is allowed to stay local)', async () => {
     const vault = new Vault()
     vault.add('PERSON', 'Jordan Rivera', 'rules')

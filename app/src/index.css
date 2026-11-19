@@ -357,6 +357,20 @@ mark small { font: 700 0.6rem/1 var(--font-body); text-transform: uppercase; let
 .actionbar__right { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .actionbar label.small { color: var(--muted); }
 
+/* ───────────────────────────── route plan ───────────────────────────── */
+.signals { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0 0 16px; }
+.signal { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); font-size: var(--fs-xs); font-weight: 600; color: var(--ink-soft); }
+.signal--ok { background: var(--device-soft); border-color: transparent; color: var(--device); }
+.signal--warn { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+.plan { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.plan__step { position: relative; padding: 0 0 16px 22px; }
+.plan__step::before { content: ''; position: absolute; left: 5px; top: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.plan__step::after { content: ''; position: absolute; left: 9px; top: 20px; bottom: 0; width: 2px; background: var(--line); }
+.plan__step:last-child { padding-bottom: 0; }
+.plan__step:last-child::after { display: none; }
+.plan__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.plan__step p { margin: 0; }
+
 /* ───────────────────────────── results ───────────────────────────── */
 .result-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start; }
 .result-chips { display: flex; gap: 8px; flex-wrap: wrap; }

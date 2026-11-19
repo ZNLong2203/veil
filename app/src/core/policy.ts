@@ -14,7 +14,7 @@
 
 export type Route = 'ON_DEVICE_ONLY' | 'PREFER_ON_DEVICE' | 'PREFER_CLOUD' | 'CLOUD_ONLY'
 
-export type TaskId = 'readImage' | 'findEntities' | 'triage' | 'explain' | 'followUp'
+export type TaskId = 'warmUp' | 'readImage' | 'findEntities' | 'triage' | 'explain' | 'followUp'
 
 export type InputClass = 'raw' | 'redacted'
 
@@ -28,6 +28,13 @@ export interface TaskPolicy {
 }
 
 export const POLICY: Record<TaskId, TaskPolicy> = {
+  warmUp: {
+    id: 'warmUp',
+    label: 'Warm up Gemini Nano',
+    route: 'ON_DEVICE_ONLY',
+    input: 'redacted',
+    why: 'Loads the on-device model into memory in the background so your first document is fast. No document is involved.',
+  },
   readImage: {
     id: 'readImage',
     label: 'Read photo of document',

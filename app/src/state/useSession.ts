@@ -16,11 +16,14 @@ import { EgressBlockedError } from '../core/egress'
 import { detectWithRules } from '../core/rules'
 import { runTask } from '../ai/run'
 import { ledger } from '../core/ledger'
+import { guessLanguage, planRoutes } from '../core/planner'
 import { buildRedaction, type RedactionReport } from '../core/redact'
 import { PII_KINDS, type PiiKind } from '../core/types'
 import { Vault } from '../core/vault'
 import { imageToJpegBase64 } from '../ui/image'
 import type { DeviceCapabilities } from '../ai/device'
+import { buildSignals } from './signals'
+import { useBattery } from './useBattery'
 
 export type Stage = 'add' | 'review' | 'result'
 
@@ -59,7 +62,7 @@ export function friendlyError(e: unknown): string {
   return msg
 }
 
-export function useSession(device: DeviceCapabilities | null) {
+export function useSession(device: DeviceCapabilities | null, online: boolean, cloudEnabled: boolean) {
   const [vault] = useState(() => new Vault())
   const [version, setVersion] = useState(0)
   const bump = () => setVersion((v) => v + 1)
@@ -75,6 +78,16 @@ export function useSession(device: DeviceCapabilities | null) {
   const [result, setResult] = useState<ExplainResult | null>(null)
   const [answers, setAnswers] = useState<AnswerEntry[]>([])
   const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
+
+  const [needsReview, setNeedsReview] = useState(false)
+  const battery = useBattery()
+
+  // Custom routing: what will run where, and why, for this document and this device right now.
+  const signals = useMemo(
+    () => buildSignals({ caps: device, online, text, targetLanguage: language, cloudEnabled, battery }),
+    [device, online, text, language, cloudEnabled, battery],
+  )
+  const plan = useMemo(() => planRoutes(signals), [signals])
 
   const redacted = useMemo(() => vault.apply(text), [vault, text, version]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -103,8 +116,11 @@ export function useSession(device: DeviceCapabilities | null) {
         setAnswers([])
         setConfirmed(false)
         const started = performance.now()
+        // Plan for exactly this document: the textarea may have just changed.
+        const p = planRoutes({ ...signals, docChars: doc.length, language: guessLanguage(doc) })
+        setNeedsReview(p.entitiesNeedReview)
         const rep = await buildRedaction(doc, vault, {
-          detect: modelReady ? makeEntityDetector(vault) : undefined,
+          detect: p.useModelForEntities && isFirebaseConfigured ? makeEntityDetector(vault) : undefined,
           onProgress: (done, total) => setBusy({ label: `Gemini Nano is reading your document (${done}/${total})…`, progress: total ? done / total : 0 }),
         })
         ledger.add({
@@ -120,7 +136,7 @@ export function useSession(device: DeviceCapabilities | null) {
         setStage('review')
         bump()
       }),
-    [run, vault, modelReady],
+    [run, vault, signals],
   )
 
   const loadFile = useCallback(
@@ -173,26 +189,26 @@ export function useSession(device: DeviceCapabilities | null) {
       run('Explaining your document…', async () => {
         const clean = vault.apply(text)
         try {
-          setClassified(await triage(vault, clean))
+          setClassified(await triage(vault, clean, plan.triageRoute))
         } catch (e) {
           if (e instanceof EgressBlockedError || e instanceof NotConfiguredError) throw e
           setClassified(null) // classification is a nicety; keep going
         }
-        setResult(await explain(vault, clean, language))
+        setResult(await explain(vault, clean, language, { route: plan.generateRoute, compact: plan.generateCompact }))
         setAnswers([])
         setStage('result')
       }),
-    [run, vault, text, language],
+    [run, vault, text, language, plan],
   )
 
   const ask = useCallback(
     (question: string) =>
       run('Thinking…', async () => {
         const history = answers.map((a) => ({ q: a.q, a: a.redactedAnswer }))
-        const { answer, executedOn } = await followUp(vault, vault.apply(text), history, question, language)
+        const { answer, executedOn } = await followUp(vault, vault.apply(text), history, question, language, { route: plan.generateRoute, compact: plan.generateCompact })
         setAnswers((prev) => [...prev, { q: question, redactedAnswer: answer, executedOn }])
       }),
-    [run, answers, vault, text, language],
+    [run, answers, vault, text, language, plan],
   )
 
   /**
@@ -261,7 +277,7 @@ export function useSession(device: DeviceCapabilities | null) {
 
   return {
     vault, version, stage, setStage, text, setText, busy, error, setError, report, confirmed, setConfirmed,
-    language, setLanguage, classified, result, answers, redacted, modelReady,
+    language, setLanguage, classified, result, answers, redacted, modelReady, plan, signals, needsReview,
     analyze, loadFile, protect, unprotect, understand, ask, reset, testGuard, notice, loadPreview, show, showExplanation, kinds: PII_KINDS,
   }
 }

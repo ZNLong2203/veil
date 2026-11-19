@@ -1,8 +1,9 @@
 import { chunkText } from '../core/chunk'
+import type { Route } from '../core/policy'
 import { detectWithRules } from '../core/rules'
 import type { PiiKind, Span } from '../core/types'
 import type { EntityDetector } from '../core/redact'
-import type { Vault } from '../core/vault'
+import { Vault } from '../core/vault'
 import { buildModel } from './models'
 import { runTask, type RunResult } from './run'
 import { getRuntimeConfig } from './runtimeConfig'
@@ -56,6 +57,14 @@ function parseJson<T>(text: string): T {
 }
 
 const squash = (s: string) => s.toLowerCase().replace(/\s+/g, ' ')
+
+/* ───────────────────────── 0. warm up Gemini Nano (on-device only) ───────────────────────── */
+
+/** Loads the model into memory so the first real request is fast. Sends nothing anywhere. */
+export async function warmUpDevice(): Promise<void> {
+  const model = buildModel({ route: 'ON_DEVICE_ONLY', system: 'Reply with the single word OK.' })
+  await runTask({ task: 'warmUp', model, parts: ['Ready?'], outbound: '', vault: new Vault(), note: 'Loads the model into memory. No document involved.' })
+}
 
 /* ───────────────────────── 1. read a photo (on-device only) ───────────────────────── */
 
@@ -125,11 +134,15 @@ export interface Triage {
   language: string
 }
 
-export async function triage(vault: Vault, redacted: string): Promise<Triage & { executedOn: RunResult['executedOn'] }> {
-  const model = buildModel({ route: 'PREFER_ON_DEVICE', system: SYSTEM_TRIAGE, schema: TRIAGE_SCHEMA, cloudModel: getRuntimeConfig().cloudModelLite })
+export async function triage(
+  vault: Vault,
+  redacted: string,
+  route: Route = 'PREFER_ON_DEVICE',
+): Promise<Triage & { executedOn: RunResult['executedOn'] }> {
+  const model = buildModel({ route, system: SYSTEM_TRIAGE, schema: TRIAGE_SCHEMA, cloudModel: getRuntimeConfig().cloudModelLite })
   const excerpt = chunkText(redacted, 2400)[0] ?? ''
   const prompt = `Document excerpt:\n"""\n${excerpt}\n"""`
-  const { text, executedOn } = await runTask({ task: 'triage', model, parts: [prompt], outbound: prompt, vault })
+  const { text, executedOn } = await runTask({ task: 'triage', model, parts: [prompt], outbound: prompt, vault, route })
   return { ...parseJson<Triage>(text), executedOn }
 }
 
@@ -152,14 +165,24 @@ export interface ExplainResult {
   compact: boolean
 }
 
-export async function explain(vault: Vault, redacted: string, language: string): Promise<ExplainResult> {
-  const compact = isOffline() || !getRuntimeConfig().cloudEnabled
+/** What the planner decided for the redacted-text generation steps (explain, follow-up, drafts). */
+export interface GenChoice {
+  route: Route
+  /** Use the short on-device variant (smaller schema, truncated text). */
+  compact: boolean
+}
+
+/** Fallback when no plan is supplied: prefer the cloud, go compact when offline or the cloud is off. */
+export const defaultGenChoice = (): GenChoice => ({ route: 'PREFER_CLOUD', compact: isOffline() || !getRuntimeConfig().cloudEnabled })
+
+export async function explain(vault: Vault, redacted: string, language: string, choice: GenChoice = defaultGenChoice()): Promise<ExplainResult> {
+  const { route, compact } = choice
   const model = compact
-    ? buildModel({ route: 'PREFER_CLOUD', system: SYSTEM_COMPACT, schema: EXPLAIN_COMPACT_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
-    : buildModel({ route: 'PREFER_CLOUD', system: explainSystem(language), schema: EXPLAIN_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
+    ? buildModel({ route, system: SYSTEM_COMPACT, schema: EXPLAIN_COMPACT_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
+    : buildModel({ route, system: explainSystem(language), schema: EXPLAIN_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
   const body = compact ? redacted.slice(0, getRuntimeConfig().compactMaxChars) : redacted
   const prompt = `Document (personal data replaced by placeholders):\n"""\n${body}\n"""`
-  const { text, executedOn } = await runTask({ task: 'explain', model, parts: [prompt], outbound: prompt, vault })
+  const { text, executedOn } = await runTask({ task: 'explain', model, parts: [prompt], outbound: prompt, vault, route })
   return { explanation: normalizeExplanation(parseJson<Partial<Explanation>>(text)), executedOn, compact }
 }
 
@@ -197,12 +220,14 @@ export async function followUp(
   history: QA[],
   question: string,
   language: string,
+  choice: GenChoice = defaultGenChoice(),
 ): Promise<{ answer: string; executedOn: RunResult['executedOn'] }> {
-  const model = buildModel({ route: 'PREFER_CLOUD', system: followUpSystem(language), schema: FOLLOWUP_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
+  const { route, compact } = choice
+  const model = buildModel({ route, system: followUpSystem(language), schema: FOLLOWUP_SCHEMA, cloudModel: getRuntimeConfig().cloudModel })
   const safeQuestion = redactQuestion(question, vault)
   const earlier = history.map((h) => `Q: ${vault.apply(h.q)}\nA: ${vault.apply(h.a)}`).join('\n\n')
-  const doc = isOffline() || !getRuntimeConfig().cloudEnabled ? redactedDoc.slice(0, getRuntimeConfig().compactMaxChars) : redactedDoc
+  const doc = compact ? redactedDoc.slice(0, getRuntimeConfig().compactMaxChars) : redactedDoc
   const prompt = `Document:\n"""\n${doc}\n"""\n\n${earlier ? `Earlier questions and answers:\n${earlier}\n\n` : ''}Question: ${safeQuestion}`
-  const { text, executedOn } = await runTask({ task: 'followUp', model, parts: [prompt], outbound: prompt, vault })
+  const { text, executedOn } = await runTask({ task: 'followUp', model, parts: [prompt], outbound: prompt, vault, route })
   return { answer: parseJson<{ answer: string }>(text).answer, executedOn }
 }

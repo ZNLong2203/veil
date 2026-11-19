@@ -1,7 +1,7 @@
 import { InferenceSource, type GenerativeModel, type Part } from 'firebase/ai'
 import { assertSafeForCloud, EgressBlockedError } from '../core/egress'
 import { ledger } from '../core/ledger'
-import { canReachCloud, POLICY, type TaskId } from '../core/policy'
+import { canReachCloud, POLICY, type Route, type TaskId } from '../core/policy'
 import type { ExecutedOn } from '../core/types'
 import type { Vault } from '../core/vault'
 
@@ -17,6 +17,10 @@ export interface RunInput {
   /** Exactly the text that may leave the device (checked by the egress guard). */
   outbound: string
   vault: Vault
+  /** The route the planner chose for this run. Defaults to the task's policy route. */
+  route?: Route
+  /** Shown in the ledger next to a successful step. */
+  note?: string
 }
 
 /**
@@ -25,14 +29,16 @@ export interface RunInput {
  *   2. after the request, the SDK-reported `inferenceSource` is written to the ledger;
  *   3. a task that handled raw data must have run on-device, otherwise the result is discarded.
  */
-export async function runTask({ task, model, parts, outbound, vault }: RunInput): Promise<RunResult> {
+export async function runTask({ task, model, parts, outbound, vault, route: plannedRoute, note }: RunInput): Promise<RunResult> {
   const policy = POLICY[task]
+  // Raw-data tasks can never be re-routed: the policy route is the only one they may use.
+  const route: Route = policy.input === 'raw' ? policy.route : (plannedRoute ?? policy.route)
   const started = performance.now()
   const elapsed = () => Math.round(performance.now() - started)
   const log = (executedOn: ExecutedOn, extra: { charsSent?: number; note?: string } = {}) =>
     ledger.add({
       task,
-      route: policy.route,
+      route,
       executedOn,
       charsSent: extra.charsSent ?? 0,
       redactions: vault.size,
@@ -40,7 +46,7 @@ export async function runTask({ task, model, parts, outbound, vault }: RunInput)
       note: extra.note,
     })
 
-  if (canReachCloud(policy.route)) {
+  if (canReachCloud(route)) {
     try {
       assertSafeForCloud(outbound, vault)
     } catch (err) {
@@ -61,13 +67,13 @@ export async function runTask({ task, model, parts, outbound, vault }: RunInput)
   // the more conservative answer: a route that can reach the cloud is treated as having done so.
   const source = result.response.inferenceSource
   const executedOn: 'ON_DEVICE' | 'IN_CLOUD' =
-    source === InferenceSource.ON_DEVICE ? 'ON_DEVICE' : source === InferenceSource.IN_CLOUD ? 'IN_CLOUD' : canReachCloud(policy.route) ? 'IN_CLOUD' : 'ON_DEVICE'
+    source === InferenceSource.ON_DEVICE ? 'ON_DEVICE' : source === InferenceSource.IN_CLOUD ? 'IN_CLOUD' : canReachCloud(route) ? 'IN_CLOUD' : 'ON_DEVICE'
 
   if (policy.input === 'raw' && executedOn !== 'ON_DEVICE') {
     log(executedOn, { charsSent: outbound.length, note: 'Raw-data task ran off-device; result discarded.' })
     throw new Error(`Privacy contract violated: "${task}" handles raw data but ran in the cloud.`)
   }
 
-  log(executedOn, { charsSent: executedOn === 'IN_CLOUD' ? outbound.length : 0 })
+  log(executedOn, { charsSent: executedOn === 'IN_CLOUD' ? outbound.length : 0, note })
   return { text: result.response.text(), executedOn }
 }

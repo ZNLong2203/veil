@@ -3,6 +3,7 @@ import { isFirebaseConfigured } from '../ai/env'
 import { PII_KINDS, PII_LABELS, type PiiKind } from '../core/types'
 import { LANGUAGES, type Session } from '../state/useSession'
 import { AlertIcon, ArrowIcon, ChipIcon, CheckIcon, CloudIcon, LockIcon, ShieldIcon, XIcon } from './icons'
+import { RoutePlanCard } from './RoutePlanCard'
 
 export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boolean; deviceReady: boolean }) {
   const docRef = useRef<HTMLDivElement>(null)
@@ -29,7 +30,7 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
     }
   }
 
-  const needsConfirm = !rep?.modelCovered
+  const needsConfirm = !rep?.modelCovered || s.needsReview
   const canContinue = (!needsConfirm || s.confirmed) && s.busy === null && isFirebaseConfigured
 
   return (
@@ -43,7 +44,15 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
         </p>
       </header>
 
-      {rep?.modelCovered ? (
+      {rep?.modelCovered && s.needsReview ? (
+        <p className="banner banner--warn" role="status">
+          <AlertIcon size={16} />
+          <span>
+            Gemini Nano read the document on this device, but {s.signals.language.label} is not an officially supported language, so
+            treat what it found as best-effort. Read the highlighted document and protect anything it missed before continuing.
+          </span>
+        </p>
+      ) : rep?.modelCovered ? (
         <p className="banner banner--ok" role="status">
           <CheckIcon size={16} />
           <span>
@@ -171,6 +180,8 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
           </ul>
         )}
       </section>
+
+      <RoutePlanCard s={s} />
 
       <div className="selftest">
         <button className="btn btn--ghost btn--sm" onClick={() => void s.testGuard()}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isFirebaseConfigured } from './ai/env'
+import { warmUpDevice } from './ai/tasks'
 import { DEFAULT_RUNTIME_CONFIG, initRuntimeConfig, type RuntimeConfig } from './ai/runtimeConfig'
 import { useDevice } from './state/useDevice'
 import { useSession, type Stage } from './state/useSession'
@@ -19,14 +20,26 @@ const STEPS: Array<{ id: Stage; label: string }> = [
 
 export default function App() {
   const device = useDevice()
-  const s = useSession(device.caps)
-  const current = STEPS.findIndex((x) => x.id === s.stage)
   const [runtime, setRuntime] = useState<RuntimeConfig>(DEFAULT_RUNTIME_CONFIG)
+  const s = useSession(device.caps, device.online, runtime.cloudEnabled)
+  const current = STEPS.findIndex((x) => x.id === s.stage)
 
   // Firebase Remote Config: model names and a cloud kill switch. Falls back to defaults on any failure.
   useEffect(() => {
     void initRuntimeConfig().then(setRuntime)
   }, [])
+
+  // Warm up Gemini Nano once per page load (the first call otherwise takes 15-30 s). Skipped on a low battery.
+  const nanoReady = device.caps?.text === 'available'
+  const lowBattery = s.signals.batteryLevel !== undefined && s.signals.batteryLevel < 0.2 && s.signals.charging === false
+  const [warmed, setWarmed] = useState(false)
+  useEffect(() => {
+    if (!nanoReady || !isFirebaseConfigured || lowBattery || warmed) return
+    setWarmed(true)
+    void warmUpDevice().catch(() => {
+      /* warm-up is an optimisation; real steps report their own errors */
+    })
+  }, [nanoReady, lowBattery, warmed])
 
   // Dev-only design preview: /?preview=result renders the result screen from a fixture. Not in production builds.
   const { loadPreview } = s
