@@ -4,6 +4,7 @@ import { POLICY } from '../core/policy'
 import type { Vault } from '../core/vault'
 import { ExecChip } from './Chips'
 import { PlaneIcon, ShieldIcon } from './icons'
+import { WirePanel } from './WirePanel'
 
 const ROUTE_LABEL = {
   ON_DEVICE_ONLY: 'only on-device',
@@ -74,6 +75,8 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
           </li>
         ))}
       </ol>
+
+      <WirePanel vault={vault} version={version} />
 
       <details className="policy">
         <summary>How routing works</summary>

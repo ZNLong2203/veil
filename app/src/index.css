@@ -434,6 +434,18 @@ mark small { font: 700 0.6rem/1 var(--font-body); text-transform: uppercase; let
 .timeline__row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .timeline__row strong { font-size: var(--fs-sm); }
 .note { margin-top: 2px; color: var(--muted); overflow-wrap: anywhere; font-size: var(--fs-xs); }
+.wire { border-top: 1px solid var(--line); padding: 10px 0; margin-bottom: 4px; }
+.wire summary { cursor: pointer; font-weight: 600; font-size: var(--fs-sm); padding: 6px 0; }
+.wire__list { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.wire__item { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.wire__row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wire__host { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 var(--fs-xs) var(--font-mono); color: var(--ink-soft); }
+.wire__verdict { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 4px; font-size: var(--fs-xs); font-weight: 600; }
+.wire__verdict svg { flex: none; margin-top: 1px; }
+.wire__verdict--ok { color: var(--ok); }
+.wire__verdict--bad { color: var(--danger); }
+.wire__body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; padding: 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); font: 400 var(--fs-xs)/1.7 var(--font-body); max-height: 220px; overflow: auto; }
+.wire__actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .policy summary { cursor: pointer; font-weight: 600; font-size: var(--fs-sm); padding: 6px 0; }
 .policy ul { list-style: none; padding: 0; display: grid; gap: 12px; margin-top: 8px; }
 .policy li p { margin: 4px 0 0; }
