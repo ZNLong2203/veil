@@ -16,8 +16,8 @@ Web (Chrome)
 
 ## Links
 
-- Live app: «https://YOUR-PROJECT.web.app»
-- Code: «https://github.com/YOUR-USER/YOUR-REPO» (Apache-2.0, license visible in the About section)
+- Live app: https://veil-hybrid-99fj.web.app
+- Code: https://github.com/ZNLong2203/veil (Apache-2.0, license visible in the About section)
 - Demo video (YouTube, public, under 3 minutes): «https://youtu.be/…»
 
 ## Inspiration
@@ -116,10 +116,10 @@ firebase-ai-logic, gemini-nano, gemini, firebase-app-check, firebase-remote-conf
 
 ## Testing instructions for judges
 
-1. Open «live URL» in desktop Chrome 139+.
+1. Open https://veil-hybrid-99fj.web.app in desktop Chrome 139+.
 2. Click one of the **fictional sample documents**, then **Find personal data on this device**.
 3. Review the highlighted values, then **Explain this document**. Watch the Privacy Ledger on the right.
 4. Optional (full on-device path): enable `chrome://flags/#prompt-api-for-gemini-nano-multimodal-input`, restart, click
    **Download Gemini Nano** in the header, then repeat. Switch off Wi-Fi and run **Explain** again to see the offline fallback.
 
-No login is required. The app is free to use. «If a debug App Check token is needed for the hosted build, state it here.»
+No login is required and the app is free to use. The hosted build uses App Check with reCAPTCHA Enterprise, so no debug token is needed. Without Gemini Nano (other browsers) the app still works: pattern rules run, the review step requires an explicit confirmation, and the explanation uses the cloud model on redacted text.

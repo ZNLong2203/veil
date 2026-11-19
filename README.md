@@ -7,6 +7,8 @@ Veil is a web app (Chrome) built for the [#BuildHybridAI 2026](https://firebaseh
 numbers; only the redacted text goes to Gemini in the cloud for the heavy lifting. Real values are put back on your
 device when the answer arrives.
 
+**Live demo:** https://veil-hybrid-99fj.web.app (no login; best in desktop Chrome 139+ with Gemini Nano, and it still works in any browser with the cloud model on redacted text)
+
 ## The problem
 
 People paste hospital bills, leases, insurance denials and immigration letters into chatbots because those documents are
