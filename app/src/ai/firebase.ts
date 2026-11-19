@@ -18,7 +18,8 @@ export function getFirebaseApp(): FirebaseApp {
   if (cachedApp) return cachedApp
   if (!isFirebaseConfigured) throw new NotConfiguredError()
 
-  if (appCheckDebugToken) {
+  const isLocalHost = import.meta.env.DEV || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+  if (appCheckDebugToken && isLocalHost) {
     // Must be set before initializeAppCheck(). `true` makes the SDK print a fresh token to the console.
     ;(self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: string | boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN =
       appCheckDebugToken === 'true' ? true : appCheckDebugToken
