@@ -2,6 +2,7 @@ import { estimateTokens, NANO_LANGS, type PlanStep } from '../core/planner'
 import { POLICY } from '../core/policy'
 import type { Session } from '../state/useSession'
 import { ChipIcon, CloudIcon, CodeIcon } from './icons'
+import { SectionTitle } from './SectionTitle'
 
 const RUNS_ON: Record<PlanStep['runsOn'], { label: string; cls: string; icon: React.ReactNode }> = {
   device: { label: 'On this device', cls: 'chip chip--device', icon: <ChipIcon size={14} /> },
@@ -34,7 +35,9 @@ export function RoutePlanCard({ s }: { s: Session }) {
   return (
     <section className="card" aria-labelledby="plan-h">
       <div className="card__head">
-        <h2 id="plan-h">Route plan</h2>
+        <SectionTitle id="plan-h" tone="violet" icon={<ChipIcon size={18} />}>
+          Route plan
+        </SectionTitle>
         <p className="small muted">How Veil will run this document on this device right now, and why.</p>
       </div>
 

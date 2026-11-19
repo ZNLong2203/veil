@@ -37,7 +37,7 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
       <p className="ledger__sub">Where each AI step really ran.</p>
 
       <dl className="stats">
-        <div>
+        <div className="stat--protected">
           <dt>Values protected</dt>
           <dd>{vault.size}</dd>
         </div>

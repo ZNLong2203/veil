@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { Session } from '../state/useSession'
 import { ActionKit } from './ActionKit'
 import { ExecChip } from './Chips'
-import { AlertIcon, ArrowIcon, CalendarIcon, EyeIcon, ShieldIcon } from './icons'
+import { AlertIcon, ArrowIcon, CalendarIcon, CheckIcon, EyeIcon, ListIcon, QuestionIcon, ShieldIcon } from './icons'
+import { SectionTitle } from './SectionTitle'
 
 const SEVERITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High' } as const
 
@@ -56,7 +57,9 @@ export function ResultStep({ s }: { s: Session }) {
         <div className="grid2">
           {e.deadlines.length > 0 && (
             <section className="card" aria-labelledby="dl-h">
-              <h2 id="dl-h">Deadlines</h2>
+              <SectionTitle id="dl-h" tone="red" icon={<CalendarIcon size={18} />}>
+                Deadlines
+              </SectionTitle>
               <ul className="deadlines">
                 {e.deadlines.map((d, i) => (
                   <li key={i}>
@@ -75,7 +78,9 @@ export function ResultStep({ s }: { s: Session }) {
 
           {e.redFlags.length > 0 && (
             <section className="card" aria-labelledby="rf-h">
-              <h2 id="rf-h">Look at these closely</h2>
+              <SectionTitle id="rf-h" tone="amber" icon={<AlertIcon size={18} />}>
+                Look at these closely
+              </SectionTitle>
               <ul className="flags">
                 {e.redFlags.map((f, i) => (
                   <li key={i} className={`flag flag--${f.severity}`}>
@@ -96,7 +101,9 @@ export function ResultStep({ s }: { s: Session }) {
 
       {e.keyFacts.length > 0 && (
         <section className="card" aria-labelledby="kf-h">
-          <h2 id="kf-h">Key facts</h2>
+          <SectionTitle id="kf-h" tone="blue" icon={<ListIcon size={18} />}>
+            Key facts
+          </SectionTitle>
           <dl className="facts">
             {e.keyFacts.map((f, i) => (
               <div key={i}>
@@ -112,7 +119,9 @@ export function ResultStep({ s }: { s: Session }) {
         <div className="grid2">
           {e.nextSteps.length > 0 && (
             <section className="card" aria-labelledby="ns-h">
-              <h2 id="ns-h">Next steps</h2>
+              <SectionTitle id="ns-h" tone="green" icon={<CheckIcon size={18} />}>
+                Next steps
+              </SectionTitle>
               <ul className="steps-list">
                 {e.nextSteps.map((t, i) => (
                   <li key={i}>
@@ -125,7 +134,9 @@ export function ResultStep({ s }: { s: Session }) {
           )}
           {e.questionsToAsk.length > 0 && (
             <section className="card" aria-labelledby="qa-h">
-              <h2 id="qa-h">Questions to ask</h2>
+              <SectionTitle id="qa-h" tone="violet" icon={<QuestionIcon size={18} />}>
+                Questions to ask
+              </SectionTitle>
               <ul className="questions">
                 {e.questionsToAsk.map((t, i) => (
                   <li key={i}>{show(t)}</li>
@@ -139,7 +150,9 @@ export function ResultStep({ s }: { s: Session }) {
       <ActionKit s={s} />
 
       <section className="card" aria-labelledby="fu-h">
-        <h2 id="fu-h">Ask a follow-up</h2>
+        <SectionTitle id="fu-h" tone="blue" icon={<ArrowIcon size={18} />}>
+          Ask a follow-up
+        </SectionTitle>
         {s.answers.length > 0 && (
           <div className="chat">
             {s.answers.map((a, i) => (

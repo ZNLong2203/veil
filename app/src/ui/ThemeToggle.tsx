@@ -1,25 +1,22 @@
 import { useEffect, useState } from 'react'
 import { MoonIcon, SunIcon } from './icons'
 
-type Theme = 'auto' | 'light' | 'dark'
+type Theme = 'light' | 'dark'
 const KEY = 'veil-theme'
 
+/** Light by default, whatever the operating system prefers; dark only when the user picks it. */
 function read(): Theme {
   try {
-    const v = localStorage.getItem(KEY)
-    return v === 'light' || v === 'dark' ? v : 'auto'
+    return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light'
   } catch {
-    return 'auto'
+    return 'light'
   }
 }
 
 function apply(theme: Theme) {
-  if (theme === 'auto') document.documentElement.removeAttribute('data-theme')
-  else document.documentElement.dataset.theme = theme
+  if (theme === 'dark') document.documentElement.dataset.theme = 'dark'
+  else document.documentElement.removeAttribute('data-theme')
 }
-
-const isDark = (theme: Theme) =>
-  theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
 
 /** Only the colour-scheme preference is stored (never document content). */
 export function ThemeToggle() {
@@ -29,7 +26,7 @@ export function ThemeToggle() {
     apply(theme)
   }, [theme])
 
-  const dark = isDark(theme)
+  const dark = theme === 'dark'
   const toggle = () => {
     const next: Theme = dark ? 'light' : 'dark'
     setTheme(next)

@@ -3,6 +3,7 @@ import { buildIcs, isValidIsoDate, type IcsEvent } from '../core/ics'
 import type { LangCode } from '../core/planner'
 import { LANGUAGES, type Session } from '../state/useSession'
 import { ExecChip } from './Chips'
+import { SectionTitle } from './SectionTitle'
 import { ArrowIcon, CalendarIcon, CopyIcon, DocIcon, ShieldIcon } from './icons'
 
 const GENERIC_TOPICS = [
@@ -77,7 +78,9 @@ export function ActionKit({ s }: { s: Session }) {
         <p className="eyebrow">
           <ShieldIcon size={14} /> Do the next thing
         </p>
-        <h2 id="kit-h">Action kit</h2>
+        <SectionTitle id="kit-h" tone="blue" icon={<DocIcon size={18} />}>
+          Action kit
+        </SectionTitle>
         <p className="muted">
           Draft the letter or the phone call, or put the deadlines in your calendar. The cloud writes with placeholders; your real
           details are filled in on this device.

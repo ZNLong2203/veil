@@ -4,6 +4,7 @@ import { PII_KINDS, PII_LABELS, type PiiKind } from '../core/types'
 import { LANGUAGES, type Session } from '../state/useSession'
 import { AlertIcon, ArrowIcon, ChipIcon, CheckIcon, CloudIcon, LockIcon, ShieldIcon, XIcon } from './icons'
 import { RoutePlanCard } from './RoutePlanCard'
+import { SectionTitle } from './SectionTitle'
 
 export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boolean; deviceReady: boolean }) {
   const docRef = useRef<HTMLDivElement>(null)
@@ -147,9 +148,9 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
 
       <section className="card" aria-labelledby="pv-h">
         <div className="card__head">
-          <h2 id="pv-h">
+          <SectionTitle id="pv-h" tone="green" icon={<ShieldIcon size={18} />}>
             Protected values<span className="count">{entries.length}</span>
-          </h2>
+          </SectionTitle>
           <p className="small muted">
             <LockIcon size={12} /> locked values were found by Veil&apos;s rules and are always protected. You can un-protect values found by
             Gemini Nano or added by you.

@@ -67,7 +67,7 @@ export function Hero() {
         </p>
         <ul className="proofs">
           <li>
-            <span className="proofs__icon">
+            <span className="tile tile--blue">
               <ChipIcon size={20} />
             </span>
             <div>
@@ -76,7 +76,7 @@ export function Hero() {
             </div>
           </li>
           <li>
-            <span className="proofs__icon">
+            <span className="tile tile--violet">
               <ArrowIcon size={20} />
             </span>
             <div>
@@ -85,7 +85,7 @@ export function Hero() {
             </div>
           </li>
           <li>
-            <span className="proofs__icon">
+            <span className="tile tile--green">
               <EyeIcon size={20} />
             </span>
             <div>

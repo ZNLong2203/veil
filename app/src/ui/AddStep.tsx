@@ -3,10 +3,10 @@ import { SAMPLES } from '../samples'
 import type { Session } from '../state/useSession'
 import { ArrowIcon, CameraIcon, DocIcon, FileIcon, HeartIcon, HomeIcon, ShieldIcon } from './icons'
 
-const SAMPLE_ICON: Record<string, React.ReactNode> = {
-  bill: <HeartIcon size={18} />,
-  lease: <HomeIcon size={18} />,
-  denial: <DocIcon size={18} />,
+const SAMPLE_META: Record<string, { icon: React.ReactNode; tone: 'red' | 'blue' | 'amber' }> = {
+  bill: { icon: <HeartIcon size={18} />, tone: 'red' },
+  lease: { icon: <HomeIcon size={18} />, tone: 'blue' },
+  denial: { icon: <DocIcon size={18} />, tone: 'amber' },
 }
 
 export function AddStep({ s }: { s: Session }) {
@@ -65,7 +65,7 @@ export function AddStep({ s }: { s: Session }) {
       <div className="samples" role="group" aria-labelledby="samples-l">
         {SAMPLES.map((sample) => (
           <button key={sample.id} className="sample" onClick={() => s.setText(sample.text)}>
-            <span className="sample__icon">{SAMPLE_ICON[sample.id] ?? <DocIcon size={18} />}</span>
+            <span className={`tile tile--${SAMPLE_META[sample.id]?.tone ?? 'blue'}`}>{SAMPLE_META[sample.id]?.icon ?? <DocIcon size={18} />}</span>
             <span>
               <strong>{sample.title}</strong>
               <span>{sample.blurb}</span>

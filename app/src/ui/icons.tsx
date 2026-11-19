@@ -135,6 +135,17 @@ export const HeartIcon = (p: P) => (
     <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
   </Icon>
 )
+export const QuestionIcon = (p: P) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8M12 16.8v.1" />
+  </Icon>
+)
+export const ListIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+  </Icon>
+)
 export const ArrowIcon = (p: P) => (
   <Icon {...p}>
     <path d="M5 12h14M13 6l6 6-6 6" />
@@ -146,8 +157,8 @@ export function Logo({ size = 34 }: P) {
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id="veil-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#7c6cf0" />
-          <stop offset="1" stopColor="#3b2db0" />
+          <stop offset="0" stopColor="#4f7bff" />
+          <stop offset="1" stopColor="#1a43c0" />
         </linearGradient>
       </defs>
       <rect width="32" height="32" rx="9" fill="url(#veil-g)" />
