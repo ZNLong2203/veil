@@ -24,11 +24,13 @@ export const PREVIEW_EXPLANATION: Explanation = {
     {
       what: 'Pay the balance or arrange a payment plan',
       date: '15 Dec 2026',
+      isoDate: '2026-12-15',
       consequence: 'After this date the account may be sent to collections and reported to credit bureaus.',
     },
     {
       what: 'Ask for an itemized bill or financial assistance',
       date: 'Within 30 days',
+      isoDate: '',
       consequence: 'Call [PHONE_2] before the 30 days from the statement date run out.',
     },
   ],

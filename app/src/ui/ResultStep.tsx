@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Session } from '../state/useSession'
+import { ActionKit } from './ActionKit'
 import { ExecChip } from './Chips'
 import { AlertIcon, ArrowIcon, CalendarIcon, EyeIcon, ShieldIcon } from './icons'
 
@@ -134,6 +135,8 @@ export function ResultStep({ s }: { s: Session }) {
           )}
         </div>
       )}
+
+      <ActionKit s={s} />
 
       <section className="card" aria-labelledby="fu-h">
         <h2 id="fu-h">Ask a follow-up</h2>

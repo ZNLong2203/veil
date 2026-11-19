@@ -5,6 +5,7 @@ import { Ledger, summarize } from './ledger'
 import { POLICY, policyViolations, type TaskPolicy } from './policy'
 import { buildRedaction } from './redact'
 import { detectWithRules, ibanValid, luhnValid } from './rules'
+import { buildIcs, isValidIsoDate } from './ics'
 import { Vault } from './vault'
 import { SAMPLES } from '../samples'
 
@@ -220,5 +221,51 @@ describe('sample documents', () => {
     const spans = detectWithRules(lease)
     expect(spans.map((s) => s.text)).not.toContain('Gable')
     expect(spans.find((s) => s.kind === 'ADDRESS')?.text).toBe('77 Harbor View Road, Unit 12, Oakland, CA 94607')
+  })
+})
+
+describe('fillSegments', () => {
+  it('marks exactly the parts that were filled in from the vault, and leaves unknown placeholders alone', () => {
+    const v = new Vault()
+    v.add('PERSON', 'Jordan Rivera', 'rules')
+    v.add('IDNUM', 'CLM-88231-77', 'rules')
+    const segs = v.fillSegments('Dear Sir, I am [PERSON_1] (claim [IDNUM_1], also [PERSON_9]).')
+    expect(segs.map((s) => s.text).join('')).toBe('Dear Sir, I am Jordan Rivera (claim CLM-88231-77, also [PERSON_9]).')
+    expect(segs.filter((s) => s.filled).map((s) => s.text)).toEqual(['Jordan Rivera', 'CLM-88231-77'])
+  })
+  it('matches rehydrate for the same input', () => {
+    const v = new Vault()
+    v.addSpans(detectWithRules(BILL))
+    const redacted = v.apply(BILL)
+    expect(v.fillSegments(redacted).map((s) => s.text).join('')).toBe(v.rehydrate(redacted))
+  })
+})
+
+describe('ics', () => {
+  it('validates ISO dates strictly', () => {
+    expect(isValidIsoDate('2026-12-15')).toBe(true)
+    expect(isValidIsoDate('2026-02-30')).toBe(false)
+    expect(isValidIsoDate('15 Dec 2026')).toBe(false)
+    expect(isValidIsoDate('')).toBe(false)
+    expect(isValidIsoDate(undefined)).toBe(false)
+  })
+  it('writes all-day events with reminders, CRLF line endings and escaped text', () => {
+    const ics = buildIcs(
+      [{ uid: 'a@veil', date: '2026-12-31', summary: 'Pay balance; claim CLM-1, urgent', description: 'Line one\nLine two' }],
+      new Date('2026-11-20T10:00:00Z'),
+    )
+    expect(ics.startsWith('BEGIN:VCALENDAR\r\n')).toBe(true)
+    expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true)
+    expect(ics).toContain('DTSTART;VALUE=DATE:20261231')
+    expect(ics).toContain('DTEND;VALUE=DATE:20270101')
+    expect(ics).toContain('SUMMARY:Pay balance\\; claim CLM-1\\, urgent')
+    expect(ics).toContain('DESCRIPTION:Line one\\nLine two')
+    expect(ics).toContain('TRIGGER:-P7D')
+    expect(ics).toContain('TRIGGER:-P1D')
+    expect(ics).toContain('DTSTAMP:20261120T100000Z')
+  })
+  it('folds long lines at 73 characters', () => {
+    const ics = buildIcs([{ uid: 'b@veil', date: '2026-12-15', summary: 'x'.repeat(200) }])
+    for (const line of ics.split('\r\n')) expect(line.length).toBeLessThanOrEqual(73)
   })
 })

@@ -40,7 +40,17 @@ export const EXPLAIN_SCHEMA = obj(
     documentType: str(),
     plainSummary: str('3-5 sentences, plain language'),
     keyFacts: list(obj({ label: str(), value: str() }, ['label', 'value'])),
-    deadlines: list(obj({ what: str(), date: str(), consequence: str() }, ['what', 'date'])),
+    deadlines: list(
+      obj(
+        {
+          what: str(),
+          date: str('The date as written, or a short description such as "within 30 days"'),
+          isoDate: str('YYYY-MM-DD if the document gives an exact date, otherwise an empty string'),
+          consequence: str(),
+        },
+        ['what', 'date', 'isoDate'],
+      ),
+    ),
     redFlags: list(obj({ issue: str(), whyItMatters: str(), severity }, ['issue', 'whyItMatters', 'severity'])),
     questionsToAsk: list(str()),
     nextSteps: list(str()),
@@ -59,3 +69,6 @@ export const EXPLAIN_COMPACT_SCHEMA = obj(
 )
 
 export const FOLLOWUP_SCHEMA = obj({ answer: str('Direct answer, max 6 sentences') }, ['answer'])
+
+/** A drafted letter or call script. Plain text only, so it can be filled in and printed. */
+export const DRAFT_SCHEMA = obj({ subject: str('One-line subject or title'), body: str('Plain text with line breaks. No markdown.') }, ['subject', 'body'])

@@ -117,6 +117,24 @@ export class Vault {
     return text.replace(TOKEN_RE, swap).replace(LENIENT_TOKEN_RE, swap)
   }
 
+  /**
+   * Like `rehydrate`, but returns runs so the UI can highlight exactly which parts were filled in
+   * on this device. Unknown placeholders stay as they are, marked as not filled.
+   */
+  fillSegments(text: string): Array<{ text: string; filled: boolean }> {
+    const out: Array<{ text: string; filled: boolean }> = []
+    let last = 0
+    for (const m of text.matchAll(new RegExp(LENIENT_TOKEN_RE.source, 'gi'))) {
+      const entry = this.byToken.get(`[${m[1].toUpperCase()}_${m[2]}]`)
+      if (!entry) continue
+      if (m.index > last) out.push({ text: text.slice(last, m.index), filled: false })
+      out.push({ text: entry.value, filled: true })
+      last = m.index + m[0].length
+    }
+    if (last < text.length) out.push({ text: text.slice(last), filled: false })
+    return out
+  }
+
   /** Rehydrate every string inside a JSON-like value (model output) without re-serialising it. */
   rehydrateDeep<T>(value: T): T {
     if (typeof value === 'string') return this.rehydrate(value) as T

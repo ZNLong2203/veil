@@ -14,7 +14,7 @@
 
 export type Route = 'ON_DEVICE_ONLY' | 'PREFER_ON_DEVICE' | 'PREFER_CLOUD' | 'CLOUD_ONLY'
 
-export type TaskId = 'warmUp' | 'readImage' | 'findEntities' | 'triage' | 'explain' | 'followUp'
+export type TaskId = 'warmUp' | 'readImage' | 'findEntities' | 'triage' | 'explain' | 'followUp' | 'draft'
 
 export type InputClass = 'raw' | 'redacted'
 
@@ -62,6 +62,13 @@ export const POLICY: Record<TaskId, TaskPolicy> = {
     route: 'PREFER_CLOUD',
     input: 'redacted',
     why: 'Long documents and translation need the larger cloud model. If you go offline, Gemini Nano takes over with a shorter English summary.',
+  },
+  draft: {
+    id: 'draft',
+    label: 'Draft your letter or call script',
+    route: 'PREFER_CLOUD',
+    input: 'redacted',
+    why: 'The cloud writes with placeholders such as [PERSON_1]; your real name, address and numbers are filled in on this device, so the cloud never sees them.',
   },
   followUp: {
     id: 'followUp',

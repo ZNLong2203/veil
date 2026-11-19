@@ -2,11 +2,14 @@ import { useCallback, useMemo, useState } from 'react'
 import { isFirebaseConfigured } from '../ai/env'
 import { NotConfiguredError } from '../ai/firebase'
 import {
+  draftAction,
   explain,
   followUp,
   makeEntityDetector,
   readImage,
   triage,
+  type Draft,
+  type DraftKind,
   type ExplainResult,
   type Explanation,
   type Triage,
@@ -80,6 +83,7 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
   const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null)
 
   const [needsReview, setNeedsReview] = useState(false)
+  const [draft, setDraft] = useState<Draft | null>(null)
   const battery = useBattery()
 
   // Custom routing: what will run where, and why, for this document and this device right now.
@@ -114,6 +118,7 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
         setResult(null)
         setClassified(null)
         setAnswers([])
+        setDraft(null)
         setConfirmed(false)
         const started = performance.now()
         // Plan for exactly this document: the textarea may have just changed.
@@ -211,6 +216,17 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
     [run, answers, vault, text, language, plan],
   )
 
+  /** Action kit: a letter or call script written from the redacted document; filled in locally for display. */
+  const makeDraft = useCallback(
+    (kind: DraftKind, topic: string, writeIn: string) =>
+      run(kind === 'letter' ? 'Drafting your letter…' : 'Writing your call script…', async () => {
+        setDraft(
+          await draftAction(vault, vault.apply(text), { kind, topic, writeIn }, { route: plan.generateRoute, compact: plan.generateCompact }),
+        )
+      }),
+    [run, vault, text, plan],
+  )
+
   /**
    * Safety self-test: push the ORIGINAL document through the real cloud-bound path. The egress guard
    * must refuse it. The model here is a stub that must never be reached, so nothing is ever sent.
@@ -261,6 +277,7 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
     setResult(null)
     setClassified(null)
     setAnswers([])
+    setDraft(null)
     setConfirmed(false)
     setError(null)
     setNotice(null)
@@ -277,7 +294,7 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
 
   return {
     vault, version, stage, setStage, text, setText, busy, error, setError, report, confirmed, setConfirmed,
-    language, setLanguage, classified, result, answers, redacted, modelReady, plan, signals, needsReview,
+    language, setLanguage, classified, result, answers, redacted, modelReady, plan, signals, needsReview, draft, makeDraft, clearDraft: () => setDraft(null),
     analyze, loadFile, protect, unprotect, understand, ask, reset, testGuard, notice, loadPreview, show, showExplanation, kinds: PII_KINDS,
   }
 }

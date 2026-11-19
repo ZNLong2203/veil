@@ -11,6 +11,7 @@ import {
   ENTITY_SCHEMA,
   EXPLAIN_COMPACT_SCHEMA,
   EXPLAIN_SCHEMA,
+  DRAFT_SCHEMA,
   FOLLOWUP_SCHEMA,
   TRIAGE_SCHEMA,
 } from './schemas'
@@ -152,7 +153,7 @@ export interface Explanation {
   documentType: string
   plainSummary: string
   keyFacts: Array<{ label: string; value: string }>
-  deadlines: Array<{ what: string; date: string; consequence?: string }>
+  deadlines: Array<{ what: string; date: string; isoDate?: string; consequence?: string }>
   redFlags: Array<{ issue: string; whyItMatters: string; severity: 'low' | 'medium' | 'high' }>
   questionsToAsk: string[]
   nextSteps: string[]
@@ -230,4 +231,44 @@ export async function followUp(
   const prompt = `Document:\n"""\n${doc}\n"""\n\n${earlier ? `Earlier questions and answers:\n${earlier}\n\n` : ''}Question: ${safeQuestion}`
   const { text, executedOn } = await runTask({ task: 'followUp', model, parts: [prompt], outbound: prompt, vault, route })
   return { answer: parseJson<{ answer: string }>(text).answer, executedOn }
+}
+
+/* ───────────────────────── 6. action kit: letter or call script ───────────────────────── */
+
+export type DraftKind = 'letter' | 'call'
+
+export interface Draft {
+  kind: DraftKind
+  topic: string
+  subject: string
+  /** Exactly as the model wrote it, with placeholders. Filled in only for display. */
+  redactedBody: string
+  executedOn: RunResult['executedOn']
+}
+
+const PLACEHOLDER_NOTE = `Use the placeholders exactly as they appear in the document (for example [PERSON_1], [ADDRESS_1], [IDNUM_2]) wherever a personal detail belongs. The real values are filled in later on the user's own device. Never invent a name, number or address.`
+
+const draftSystem = (kind: DraftKind, writeIn: string) =>
+  kind === 'letter'
+    ? `You write formal letters for ordinary people dealing with paperwork. ${PLACEHOLDER_NOTE}
+Write in ${writeIn}. The writer is the person the document is about or addressed to (the patient, tenant, insured or account holder), and the recipient is the organisation that sent it.
+Be polite, firm and specific: quote the amounts, dates and reference numbers from the document, state the problem, make one clear request, and ask for a written reply within 14 days. Keep it under 250 words.
+Put the line "[Date]" where the date goes and leave the rest to the document. Do not give legal advice and do not threaten legal action. Plain text only, no markdown.`
+    : `You write short phone scripts for ordinary people who must call an organisation about their paperwork. ${PLACEHOLDER_NOTE}
+Write in ${writeIn}. Give: an opening line that states who is calling and the reference number, the exact request, four questions to ask, what to write down during the call (name of the agent, date and time, call reference), and what to say if the agent pushes back. Short lines, plain text, no markdown.`
+
+export async function draftAction(
+  vault: Vault,
+  redactedDoc: string,
+  opts: { kind: DraftKind; topic: string; writeIn: string },
+  choice: GenChoice = defaultGenChoice(),
+): Promise<Draft> {
+  const { route, compact } = choice
+  const model = buildModel({ route, system: draftSystem(opts.kind, opts.writeIn), schema: DRAFT_SCHEMA, cloudModel: getRuntimeConfig().cloudModel, temperature: 0.4 })
+  const doc = compact ? redactedDoc.slice(0, getRuntimeConfig().compactMaxChars) : redactedDoc
+  const topic = vault.apply(opts.topic)
+  const prompt = `Document (personal data replaced by placeholders):\n"""\n${doc}\n"""\n\nTopic: ${topic}`
+  const { text, executedOn } = await runTask({ task: 'draft', model, parts: [prompt], outbound: prompt, vault, route })
+  const parsed = parseJson<{ subject?: string; body?: string }>(text)
+  return { kind: opts.kind, topic, subject: parsed.subject ?? '', redactedBody: parsed.body ?? '', executedOn }
 }
