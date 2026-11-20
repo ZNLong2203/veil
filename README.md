@@ -105,8 +105,6 @@ Without Firebase config the app still runs the Add and Review steps (rules run l
 - [Setup (Firebase, App Check, Chrome flags, hosting)](docs/setup.md)
 - [Architecture](docs/architecture.md)
 - [Privacy model and its limits](docs/privacy-model.md)
-- [Research notes](docs/research.md)
-- [Devpost submission text](docs/submission.md) and [demo video script](docs/demo-script.md)
 
 ## Limits (honest)
 
