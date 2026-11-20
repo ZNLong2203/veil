@@ -34,5 +34,8 @@
     "vitest": "^5.1.0"
   },
   "description": "Veil: understand sensitive paperwork privately with Firebase AI Logic hybrid inference",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.7"
+  }
 }
