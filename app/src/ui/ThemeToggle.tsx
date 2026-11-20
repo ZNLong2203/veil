@@ -38,7 +38,7 @@ export function ThemeToggle() {
   }
 
   return (
-    <button className="icon-btn" style={{ width: 36, height: 36, border: '1px solid var(--line)' }} onClick={toggle} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} title={dark ? 'Light theme' : 'Dark theme'}>
+    <button className="navbtn navbtn--icon" onClick={toggle} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} title={dark ? 'Light theme' : 'Dark theme'}>
       {dark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
     </button>
   )
