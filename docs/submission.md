@@ -32,8 +32,9 @@ tenants) are also the least able to judge that risk.
 Veil turns a sensitive document into a plain-language explanation while keeping personal data on the device.
 
 1. **Add** a document by pasting text, opening a file or photographing it. Photos are read by Gemini Nano on-device only.
-2. **Review**. Pattern rules and Gemini Nano find personal data. Every protected value is highlighted, you can add or remove any
-   of them, and you can inspect exactly what would be sent.
+2. **Review**. Pattern rules and Gemini Nano find personal data. The document sits under **the veil**: drag its handle and every
+   name and number turns, in place, into the placeholder the cloud would get. You can protect anything missed by selecting it, or
+   release a value Gemini Nano flagged.
 3. **Understand**. Gemini in the cloud explains the *redacted* text: summary, deadlines, red flags, key facts, next steps and
    questions to ask, in 11 languages, plus follow-up questions. Real names are filled back in locally.
 
@@ -42,7 +43,8 @@ Veil turns a sensitive document into a plain-language explanation while keeping 
    highlighted, so the cloud never sees them.
 
 Two panels make the privacy claim checkable: a **Privacy Ledger** showing where each AI step ran, and an **On the wire** view that
-records the requests that really left the browser, re-checks them, shows the exact text sent and exports a privacy receipt.
+records the requests that really left the browser, re-checks them, shows the exact text sent and exports a privacy receipt. Under every answer, a one-line proof from the network layer says how many requests went to Gemini and that no personal data
+was in them.
 
 ## How we use Firebase AI Logic
 
