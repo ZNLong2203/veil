@@ -9,6 +9,16 @@ device when the answer arrives.
 
 **Live demo:** https://veil-hybrid-99fj.web.app (no login; best in desktop Chrome 139+ with Gemini Nano, and it still works in any browser with the cloud model on redacted text)
 
+## Try it in 60 seconds
+
+1. Open the live demo (desktop Chrome gives you the full on-device path; any other browser works too).
+2. Click **Hospital bill** (a fictional document), then **Find personal data on this device**.
+3. Read the two panes: your document, and the exact redacted copy the cloud would see. Press **Explain this document**.
+4. Open **Action kit** and press **Draft the letter**. The highlighted details were filled in on your device, never sent.
+5. In the right-hand panel open **On the wire** and **Show the exact text sent**: the real request, with placeholders.
+
+No Gemini Nano on your machine? Add `?nano=off` to the URL to see exactly what Veil does in that case: pattern rules run, you confirm the review, and the explanation uses the cloud model on redacted text.
+
 ## The problem
 
 People paste hospital bills, leases, insurance denials and immigration letters into chatbots because those documents are
@@ -106,4 +116,4 @@ exists and why Veil requires an explicit confirmation when Gemini Nano did not c
 
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](LICENSE). Third-party licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
