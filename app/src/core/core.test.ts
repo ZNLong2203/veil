@@ -59,6 +59,22 @@ describe('detectors', () => {
   })
 })
 
+describe('sign-off names', () => {
+  const found = (t: string) => detectWithRules(t).filter((x) => x.kind === 'PERSON').map((x) => x.text)
+  it('catches the writer after a closing', () => {
+    expect(found('Please pay by Friday.\n\nSincerely,\nMarcus Finch, Property Manager')).toContain('Marcus Finch')
+    expect(found('Gracias.\nAtentamente,\nDr. Javier Ortega')).toContain('Javier Ortega')
+    expect(found('Thanks\nJordan')).toContain('Jordan')
+  })
+  it('does not treat an organisation after a closing as a person', () => {
+    expect(found('Thank you,\nRiverside Medical Center')).toEqual([])
+    expect(found('Regards\nGable & Finch Property Management')).toEqual([])
+  })
+  it('does not fire on a closing word in the middle of a sentence', () => {
+    expect(found('We thank you for your patience.\nAccounts are reviewed weekly.')).toEqual([])
+  })
+})
+
 describe('vault', () => {
   it('gives the same placeholder to the same value in any casing', () => {
     const v = new Vault()

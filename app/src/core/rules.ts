@@ -239,6 +239,27 @@ function looksLikeOrganisation(text: string, g: { end: number; text: string }): 
   return ORG_WORDS.test(g.text) || /^[ \t]*(?:&|and\b)/i.test(text.slice(g.end, g.end + 6))
 }
 
+const CLOSINGS = alt([
+  'sincerely',
+  'sincerely yours',
+  'yours sincerely',
+  'yours faithfully',
+  'yours truly',
+  'best regards',
+  'kind regards',
+  'warm regards',
+  'regards',
+  'respectfully',
+  'respectfully yours',
+  'cordially',
+  'signed',
+  'thank you',
+  'thanks',
+  'atentamente',
+  'cordialmente',
+  'trân trọng',
+])
+
 const TITLES = '(?:Mr|Mrs|Ms|Miss|Dr|Prof)'
 /** A name may not start with a title ("Dear Ms. [PERSON_1]" must not yield "Ms"). */
 const NAME_NOT_TITLE = `(?!${TITLES}\\b)${NAME_BODY}`
@@ -260,6 +281,15 @@ function detectLabeledNames(text: string): Found[] {
       const g = group(m, 1)
       if (g && !looksLikeOrganisation(text, g)) out.push({ ...g, kind: 'PERSON' })
     }
+  }
+  // Sign-offs: "Sincerely,\nMarcus Finch". The name on the line after a closing is the writer.
+  const closing = new RegExp(
+    `(?<![\\p{L}\\p{N}])${CLOSINGS}[ \\t]*[,.!]?[ \\t]*\\r?\\n[ \\t]*(?:${TITLES}\\.?[ \\t]+)?(${NAME_NOT_TITLE})`,
+    'dgu',
+  )
+  for (const m of matchAll(closing, text)) {
+    const g = group(m, 1)
+    if (g && !looksLikeOrganisation(text, g)) out.push({ ...g, kind: 'PERSON' })
   }
   // "Dr. Chen", "Mrs. Okafor"
   const titled = new RegExp(`(?<![\\p{L}\\p{N}])${TITLES}\\.?[ \\t]+(${NAME_NOT_TITLE})`, 'dgu')
