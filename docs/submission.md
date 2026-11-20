@@ -117,7 +117,7 @@ firebase-ai-logic, gemini-nano, gemini, firebase-app-check, firebase-remote-conf
 ## Testing instructions for judges
 
 1. Open https://veil-hybrid-99fj.web.app in desktop Chrome 139+.
-2. Click one of the **fictional sample documents**, then **Find personal data on this device**.
+2. Click **Try it on a sample bill** (or pick another fictional sample and click **Find personal data on this device**).
 3. Review the highlighted values, then **Explain this document**. Watch the Privacy Ledger on the right.
 4. Optional (full on-device path): enable `chrome://flags/#prompt-api-for-gemini-nano-multimodal-input`, restart, click
    **Download Gemini Nano** in the header, then repeat. Switch off Wi-Fi and run **Explain** again to see the offline fallback.

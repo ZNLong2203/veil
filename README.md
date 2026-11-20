@@ -12,10 +12,10 @@ device when the answer arrives.
 ## Try it in 60 seconds
 
 1. Open the live demo (desktop Chrome gives you the full on-device path; any other browser works too).
-2. Click **Hospital bill** (a fictional document), then **Find personal data on this device**.
+2. Click **Try it on a sample bill** (a fictional document). Gemini Nano finds the personal data on your device.
 3. Read the two panes: your document, and the exact redacted copy the cloud would see. Press **Explain this document**.
 4. Open **Action kit** and press **Draft the letter**. The highlighted details were filled in on your device, never sent.
-5. In the right-hand panel open **On the wire** and **Show the exact text sent**: the real request, with placeholders.
+5. Under the answer, **Checked on the wire** re-checks the bytes that really left the tab. Click **See the exact bytes** to read the request, with placeholders.
 
 No Gemini Nano on your machine? Add `?nano=off` to the URL to see exactly what Veil does in that case: pattern rules run, you confirm the review, and the explanation uses the cloud model on redacted text.
 
