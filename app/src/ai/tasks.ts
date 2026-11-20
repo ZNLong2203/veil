@@ -1,4 +1,4 @@
-import { todayIn } from '../core/dates'
+import { prettyDates, todayIn } from '../core/dates'
 import { chunkText } from '../core/chunk'
 import { EgressBlockedError } from '../core/egress'
 import type { Route } from '../core/policy'
@@ -338,7 +338,8 @@ export async function draftAction(
   })
   const parsed = parseJson<{ subject?: string; body?: string }>(value.text)
   // Today's date is filled in here, on this device: the model is told to leave "[Date]".
-  const body = (parsed.body ?? '').replace(/\[(?:date|today'?s date|current date)\]/gi, todayIn(opts.writeIn))
-  return { kind: opts.kind, topic, subject: parsed.subject ?? '', redactedBody: body, executedOn: value.executedOn }
+  // ISO dates copied from the document read the way a letter in that language would write them.
+  const body = prettyDates((parsed.body ?? '').replace(/\[(?:date|today'?s date|current date)\]/gi, todayIn(opts.writeIn)), opts.writeIn)
+  return { kind: opts.kind, topic, subject: prettyDates(parsed.subject ?? '', opts.writeIn), redactedBody: body, executedOn: value.executedOn }
 }
 
