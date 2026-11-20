@@ -45,7 +45,9 @@ export class Vault {
 
   /** Register a value (idempotent) and return its entry. */
   add(kind: PiiKind, value: string, source: SpanSource): VaultEntry | null {
-    const clean = value.trim().replace(/^[\s.,;:]+|[\s.,;:]+$/g, '')
+    let clean = value.trim().replace(/^[\s.,;:]+|[\s.,;:]+$/g, '')
+    // "Dr. Chen" and "Chen" are one person: keep the title in the text, protect only the name.
+    if (kind === 'PERSON') clean = clean.replace(/^(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s+/i, '')
     if (clean.length < 2) return null
     const key = normalize(clean)
     const existing = this.byKey.get(key)

@@ -14,6 +14,8 @@ export type EntityDetector = (chunk: string) => Promise<Span[]>
 export interface RedactionReport {
   /** Spans found by plain code. */
   rulesFound: number
+  /** How long the pattern rules took, in milliseconds. */
+  rulesMs: number
   /** Distinct values added by the on-device model beyond what the rules found. */
   modelAdded: number
   /** True when the on-device model ran over the whole document without error. */
@@ -30,10 +32,12 @@ export interface BuildOptions {
 
 export async function buildRedaction(text: string, vault: Vault, opts: BuildOptions = {}): Promise<RedactionReport> {
   const before = vault.size
+  const t0 = performance.now()
   vault.addSpans(detectWithRules(text))
+  const rulesMs = Math.round(performance.now() - t0)
   const rulesFound = vault.size - before
 
-  const report: RedactionReport = { rulesFound, modelAdded: 0, modelCovered: false }
+  const report: RedactionReport = { rulesFound, rulesMs, modelAdded: 0, modelCovered: false }
   if (!opts.detect) return report
 
   const chunks = chunkText(text)

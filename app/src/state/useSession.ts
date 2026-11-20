@@ -132,7 +132,6 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
         setAnswers([])
         setDraft(null)
         setConfirmed(false)
-        const started = performance.now()
         // Plan for exactly this document: the textarea may have just changed.
         const p = planRoutes({ ...signals, docChars: doc.length, language: guessLanguage(doc) })
         setNeedsReview(p.entitiesNeedReview)
@@ -146,7 +145,7 @@ export function useSession(device: DeviceCapabilities | null, online: boolean, c
           executedOn: 'LOCAL',
           charsSent: 0,
           redactions: vault.size,
-          durationMs: Math.round(performance.now() - started),
+          durationMs: rep.rulesMs,
           note: `Pattern rules found ${rep.rulesFound} value${rep.rulesFound === 1 ? '' : 's'}`,
         })
         setReport(rep)

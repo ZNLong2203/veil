@@ -58,7 +58,8 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
           <CheckIcon size={16} />
           <span>
             Gemini Nano read the whole document on this device. Pattern rules found {rep.rulesFound} value
-            {rep.rulesFound === 1 ? '' : 's'}; the model added {rep.modelAdded} more.
+            {rep.rulesFound === 1 ? '' : 's'};{' '}
+            {rep.modelAdded > 0 ? `the model added ${rep.modelAdded} more.` : 'the model found nothing they missed.'}
           </span>
         </p>
       ) : (

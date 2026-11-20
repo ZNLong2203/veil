@@ -285,3 +285,15 @@ describe('ics', () => {
     for (const line of ics.split('\r\n')) expect(line.length).toBeLessThanOrEqual(73)
   })
 })
+
+describe('vault — titles', () => {
+  it('treats "Dr. Chen" and "Chen" as one person and keeps the title visible', async () => {
+    const { Vault } = await import('./vault')
+    const v = new Vault()
+    const a = v.add('PERSON', 'Chen', 'rules')
+    const b = v.add('PERSON', 'Dr. Chen', 'on-device')
+    expect(b?.token).toBe(a?.token)
+    expect(v.size).toBe(1)
+    expect(v.apply('Anesthesia: Dr. Chen')).toBe(`Anesthesia: Dr. ${a?.token}`)
+  })
+})
