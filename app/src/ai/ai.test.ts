@@ -202,3 +202,12 @@ describe('friendlyError', () => {
     expect(msg('Firebase App Check token is invalid')).toMatch(/App Check/)
   })
 })
+
+describe('todayIn', () => {
+  it('formats the date locally in the letter language', async () => {
+    const { todayIn } = await import('./tasks')
+    const d = new Date(2026, 10, 20)
+    expect(todayIn('English', d)).toBe('November 20, 2026')
+    expect(todayIn('Unknown', d)).toBe('November 20, 2026')
+  })
+})

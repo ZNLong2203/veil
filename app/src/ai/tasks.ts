@@ -336,5 +336,20 @@ export async function draftAction(
     return runTask({ task: 'draft', model, parts: [prompt], outbound: prompt, vault, route: a.route, note: modelNote(a) })
   })
   const parsed = parseJson<{ subject?: string; body?: string }>(value.text)
-  return { kind: opts.kind, topic, subject: parsed.subject ?? '', redactedBody: parsed.body ?? '', executedOn: value.executedOn }
+  // Today's date is filled in here, on this device: the model is told to leave "[Date]".
+  const body = (parsed.body ?? '').replace(/\[(?:date|today'?s date|current date)\]/gi, todayIn(opts.writeIn))
+  return { kind: opts.kind, topic, subject: parsed.subject ?? '', redactedBody: body, executedOn: value.executedOn }
+}
+
+const LOCALE_FOR_LANGUAGE: Record<string, string> = {
+  English: 'en-US', Español: 'es', 'Tiếng Việt': 'vi', 中文: 'zh', 日本語: 'ja', 한국어: 'ko',
+  Français: 'fr', Deutsch: 'de', Português: 'pt', हिन्दी: 'hi', العربية: 'ar',
+}
+
+export function todayIn(language: string, now = new Date()): string {
+  try {
+    return new Intl.DateTimeFormat(LOCALE_FOR_LANGUAGE[language] ?? 'en-US', { dateStyle: 'long' }).format(now)
+  } catch {
+    return now.toISOString().slice(0, 10)
+  }
 }
