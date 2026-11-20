@@ -27,9 +27,11 @@ export function installWireTap(): void {
     const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase()
     const body = typeof init?.body === 'string' ? init.body : undefined
     let status = 0
+    let opaque = false
     try {
       const res = await original(input, init)
       status = res.status
+      opaque = res.type === 'opaque'
       return res
     } finally {
       if (url && url.origin !== location.origin) {
@@ -40,6 +42,7 @@ export function installWireTap(): void {
           path: url.pathname,
           bytes: body ? new TextEncoder().encode(body).length : 0,
           status,
+          opaque,
           kind,
           texts: kind === 'ai' ? extractTextParts(body) : [],
         })

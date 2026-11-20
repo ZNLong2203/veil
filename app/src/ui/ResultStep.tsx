@@ -4,6 +4,15 @@ import { ActionKit } from './ActionKit'
 import { ExecChip } from './Chips'
 import { AlertIcon, ArrowIcon, CalendarIcon, CheckIcon, EyeIcon, ListIcon, QuestionIcon, ShieldIcon } from './icons'
 import { SectionTitle } from './SectionTitle'
+import { WireProof } from './WirePanel'
+
+/** "2026-12-15" reads as "Dec 15, 2026"; anything else (e.g. "within 30 days") is shown as written. */
+function friendlyDate(text: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim())
+  if (!m) return text
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return d.getMonth() === Number(m[2]) - 1 ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : text
+}
 
 const SEVERITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High' } as const
 
@@ -43,6 +52,8 @@ export function ResultStep({ s }: { s: Session }) {
         </p>
       )}
 
+      <WireProof vault={s.vault} />
+
       <section className="card card--lift summary-card" aria-label="Summary">
         <p className="summary">{e.plainSummary}</p>
         <label className="check">
@@ -64,7 +75,7 @@ export function ResultStep({ s }: { s: Session }) {
                 {e.deadlines.map((d, i) => (
                   <li key={i}>
                     <time>
-                      <CalendarIcon size={14} /> {show(d.date)}
+                      <CalendarIcon size={14} /> {friendlyDate(show(d.date))}
                     </time>
                     <div>
                       <strong>{show(d.what)}</strong>

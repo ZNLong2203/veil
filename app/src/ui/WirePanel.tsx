@@ -2,7 +2,7 @@ import { Fragment, useState, useSyncExternalStore } from 'react'
 import { ledger } from '../core/ledger'
 import { buildReceipt, receiptToMarkdown } from '../core/receipt'
 import type { Vault } from '../core/vault'
-import { inspectWire, PLACEHOLDER_RE, wireLog, type WireEntry } from '../core/wire'
+import { inspectWire, PLACEHOLDER_RE, wireLog, type WireEntry, type WireKind } from '../core/wire'
 import { AlertIcon, CheckIcon } from './icons'
 
 /** Render redacted text with placeholders as chips. */
@@ -23,6 +23,24 @@ function Redacted({ text }: { text: string }) {
   )
 }
 
+const KIND_LABEL: Record<WireKind, string> = {
+  ai: 'AI request',
+  'app-check': 'App Check',
+  recaptcha: 'reCAPTCHA',
+  'remote-config': 'Remote Config',
+  installations: 'Installations',
+  other: 'Other',
+}
+
+const KIND_HELP: Record<WireKind, string> = {
+  ai: 'A Gemini request through Firebase AI Logic',
+  'app-check': 'proves this is the real app, no document text',
+  recaptcha: 'App Check attestation, no document text',
+  'remote-config': 'fetches settings, no document text',
+  installations: 'Firebase app instance ID, no document text',
+  other: 'not made by Veil',
+}
+
 function Row({ e, vault }: { e: WireEntry; vault: Vault }) {
   const verdict = e.kind === 'ai' ? inspectWire(e, vault) : null
   return (
@@ -32,10 +50,13 @@ function Row({ e, vault }: { e: WireEntry; vault: Vault }) {
         <span className="wire__host" title={`${e.host}${e.path}`}>
           {e.host}
         </span>
-        <span className="chip chip--local">{e.kind === 'ai' ? 'AI request' : e.kind}</span>
+        <span className="chip chip--local" title={KIND_HELP[e.kind]}>
+          {KIND_LABEL[e.kind]}
+        </span>
       </div>
       <div className="small muted">
-        {e.bytes.toLocaleString()} B · {e.status || 'failed'}
+        {e.bytes.toLocaleString()} B · {e.status ? e.status : e.opaque ? 'sent (no-cors)' : 'failed'}
+        {e.kind !== 'ai' && <> · {KIND_HELP[e.kind]}</>}
       </div>
       {verdict && (
         <>
@@ -96,7 +117,7 @@ export function WirePanel({ vault, version }: { vault: Vault; version: number })
   }
 
   return (
-    <details className="wire" open={entries.length > 0}>
+    <details className="wire" id="wire" open={entries.length > 0}>
       <summary>
         On the wire<span className="count">{entries.length}</span>
       </summary>
@@ -123,5 +144,40 @@ export function WirePanel({ vault, version }: { vault: Vault; version: number })
       </div>
       <p className="small muted">The receipt holds counts, categories and hashes, never your text.</p>
     </details>
+  )
+}
+
+/** Opens the wire panel and brings it into view (it lives in the side panel). */
+function showWire() {
+  const el = document.getElementById('wire') as HTMLDetailsElement | null
+  if (!el) return
+  el.open = true
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+/**
+ * One-line proof under the answer: what the network layer actually saw for this session's AI requests,
+ * re-checked independently of the app's own bookkeeping.
+ */
+export function WireProof({ vault }: { vault: Vault }) {
+  const entries = useSyncExternalStore(wireLog.subscribe, wireLog.getSnapshot)
+  const ai = entries.filter((e) => e.kind === 'ai')
+  if (ai.length === 0) return null
+  const verdicts = ai.map((e) => inspectWire(e, vault))
+  const leaks = verdicts.reduce((n, v) => n + v.findings.reduce((a, f) => a + f.count, 0), 0)
+  const placeholders = verdicts.reduce((n, v) => n + v.placeholders, 0)
+  return (
+    <p className={`proofbar ${leaks ? 'proofbar--bad' : ''}`} role="status">
+      {leaks ? <AlertIcon size={16} /> : <CheckIcon size={16} />}
+      <span>
+        <strong>
+          {leaks ? `${leaks} personal value${leaks === 1 ? '' : 's'} found on the wire` : 'Checked on the wire: no personal data left this tab'}
+        </strong>{' '}
+        · {ai.length} request{ai.length === 1 ? '' : 's'} to Gemini, {placeholders} placeholder{placeholders === 1 ? '' : 's'}
+      </span>
+      <button className="link proofbar__link" onClick={showWire}>
+        See the exact bytes
+      </button>
+    </p>
   )
 }

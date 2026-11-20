@@ -7,7 +7,7 @@ import type { Vault } from './vault'
  * App Check tokens); only the host, the path, the size and, for AI requests, the text parts.
  */
 
-export type WireKind = 'ai' | 'remote-config' | 'app-check' | 'installations' | 'other'
+export type WireKind = 'ai' | 'remote-config' | 'app-check' | 'recaptcha' | 'installations' | 'other'
 
 export interface WireEntry {
   id: number
@@ -18,6 +18,8 @@ export interface WireEntry {
   path: string
   bytes: number
   status: number
+  /** A no-cors request: it was sent, but the browser hides its status. */
+  opaque?: boolean
   kind: WireKind
   /** For AI requests: every text part (system instruction and contents) found in the request body. */
   texts: string[]
@@ -27,6 +29,8 @@ export function classifyHost(host: string, path: string): WireKind {
   if (/:(stream)?generateContent$/i.test(path) || /firebasevertexai|firebaseml/i.test(host)) return 'ai'
   if (/firebaseremoteconfig/i.test(host)) return 'remote-config'
   if (/appcheck/i.test(host)) return 'app-check'
+  // App Check's reCAPTCHA Enterprise attestation (www.google.com/recaptcha/...).
+  if (/(^|\.)(google\.com|recaptcha\.net)$/i.test(host) && /^\/recaptcha\//i.test(path)) return 'recaptcha'
   if (/firebaseinstallations/i.test(host)) return 'installations'
   return 'other'
 }

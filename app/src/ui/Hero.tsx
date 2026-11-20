@@ -51,7 +51,7 @@ function FlowDiagram() {
   )
 }
 
-export function Hero() {
+export function Hero({ onTry, onOwn, busy }: { onTry: () => void; onOwn: () => void; busy: string | null }) {
   return (
     <section className="hero" aria-labelledby="hero-h">
       <div>
@@ -65,6 +65,23 @@ export function Hero() {
           Veil explains bills, leases and official letters in plain language, in your language. Your personal details are found
           and removed on this device, so only a redacted copy ever reaches the cloud.
         </p>
+        <div className="hero__cta">
+          <button className="btn btn--primary btn--lg" onClick={onTry} disabled={busy !== null}>
+            {busy !== null ? (
+              <>
+                <span className="spinner" aria-hidden="true" /> {busy}
+              </>
+            ) : (
+              <>
+                Try it on a sample bill <ArrowIcon size={18} />
+              </>
+            )}
+          </button>
+          <button className="btn btn--ghost btn--lg" onClick={onOwn}>
+            Use my own document
+          </button>
+          <p className="small muted">The sample is fictional. One click runs the private pipeline end to end on this device.</p>
+        </div>
         <ul className="proofs">
           <li>
             <span className="tile tile--blue">

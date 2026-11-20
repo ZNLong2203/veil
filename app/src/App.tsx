@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isFirebaseConfigured } from './ai/env'
 import { warmUpDevice } from './ai/tasks'
 import { DEFAULT_RUNTIME_CONFIG, initRuntimeConfig, type RuntimeConfig } from './ai/runtimeConfig'
 import { useDevice } from './state/useDevice'
 import { useSession, type Stage } from './state/useSession'
+import { SAMPLES } from './samples'
 import { AddStep } from './ui/AddStep'
 import { Header } from './ui/Header'
 import { Hero } from './ui/Hero'
@@ -41,6 +42,23 @@ export default function App() {
     })
   }, [nanoReady, lowBattery, warmed])
 
+  // Each new step starts at the top of the page, not where the previous one was scrolled to.
+  const firstStage = useRef(true)
+  useEffect(() => {
+    if (firstStage.current) {
+      firstStage.current = false
+      return
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [s.stage])
+
+  const tryHospitalBill = () => void s.analyze(SAMPLES[0].text)
+  const focusOwnDocument = () => {
+    const el = document.getElementById('doc')
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.focus({ preventScroll: true })
+  }
+
   // Dev-only design preview: /?preview=result renders the result screen from a fixture. Not in production builds.
   const { loadPreview } = s
   useEffect(() => {
@@ -76,7 +94,7 @@ export default function App() {
       )}
 
       <div className="wrap">
-        {s.stage === 'add' && <Hero />}
+        {s.stage === 'add' && <Hero onTry={tryHospitalBill} onOwn={focusOwnDocument} busy={s.busy?.label ?? null} />}
 
         <div className="layout">
           <main id="main">
@@ -111,7 +129,11 @@ export default function App() {
       </div>
 
       <footer className="foot wrap small muted">
-        Open source (Apache-2.0). Built with Firebase AI Logic hybrid inference: Gemini Nano on-device, Gemini in the cloud.
+        Open source (Apache-2.0),{' '}
+        <a href="https://github.com/ZNLong2203/veil" target="_blank" rel="noreferrer">
+          source on GitHub
+        </a>
+        . Built with Firebase AI Logic hybrid inference: Gemini Nano on-device, Gemini in the cloud.
       </footer>
     </div>
   )

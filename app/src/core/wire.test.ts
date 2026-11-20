@@ -93,3 +93,12 @@ describe('privacy receipt', () => {
     expect(receiptToMarkdown(r)).toMatch(/PERSONAL DATA FOUND/)
   })
 })
+
+describe('classifyHost — App Check attestation', () => {
+  it('labels reCAPTCHA Enterprise calls instead of calling them unknown', () => {
+    expect(classifyHost('www.google.com', '/recaptcha/enterprise/clr')).toBe('recaptcha')
+    expect(classifyHost('www.recaptcha.net', '/recaptcha/api2/anchor')).toBe('recaptcha')
+    expect(classifyHost('www.google.com', '/search')).toBe('other')
+    expect(classifyHost('evilgoogle.com', '/recaptcha/x')).toBe('other')
+  })
+})

@@ -472,3 +472,13 @@ mark small { font: 700 0.6rem/1 var(--font-body); text-transform: uppercase; let
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* Result page: one-line proof from the network layer */
+.proofbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--ok-soft); color: var(--ok); font-size: var(--fs-sm); line-height: 1.45; }
+.proofbar > span { flex: 1 1 260px; min-width: 0; }
+.proofbar--bad { background: var(--danger-soft); color: var(--danger); }
+.proofbar__link { color: inherit; font-weight: 600; white-space: nowrap; }
+
+/* Hero calls to action */
+.hero__cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 22px 0 26px; }
+.hero__cta .small { flex-basis: 100%; margin: 0; }
