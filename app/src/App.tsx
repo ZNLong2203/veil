@@ -85,7 +85,7 @@ export default function App() {
           <span>Cloud explanations are paused. Veil is running entirely on this device with Gemini Nano.</span>
         </p>
       )}
-      <Header device={device} />
+      <Header device={device} cloudEnabled={runtime.cloudEnabled} stage={s.stage} onTry={tryHospitalBill} onReset={s.reset} busy={s.busy !== null || device.caps === null} />
       {device.error && (
         <p className="banner banner--warn wrap" role="alert">
           <AlertIcon size={16} />

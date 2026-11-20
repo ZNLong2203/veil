@@ -1,56 +1,100 @@
-import type { DeviceState } from '../state/useDevice'
 import { useEffect, useState } from 'react'
-import { ChipIcon, CodeIcon, Logo } from './icons'
+import type { DeviceState } from '../state/useDevice'
+import { ArrowIcon, ChipIcon, CloudIcon, CodeIcon, Logo } from './icons'
 import { ThemeToggle } from './ThemeToggle'
 
-function DeviceChip({ device }: { device: DeviceState }) {
+type Tone = 'ok' | 'warn' | 'off' | 'busy'
+
+/** The on-device half of the hybrid indicator. */
+function deviceState(device: DeviceState): { tone: Tone; label: string; title: string; action?: () => void } {
   const { caps, progress } = device
-  if (progress !== null) {
-    const pct = Math.round(progress * 100)
-    return (
-      <span className="chip chip--device" role="status">
-        <ChipIcon size={14} /> Downloading Gemini Nano… {pct}%
-      </span>
-    )
-  }
-  if (!caps) return <span className="navpill navpill--muted">Checking on-device AI…</span>
+  if (progress !== null) return { tone: 'busy', label: `Downloading ${Math.round(progress * 100)}%`, title: 'Gemini Nano is downloading to this device.' }
+  if (!caps) return { tone: 'busy', label: 'Checking…', title: 'Checking whether Gemini Nano can run here.' }
   switch (caps.text) {
     case 'available':
-      return (
-        <span
-          className="navpill"
-          role="status"
-          title={caps.image ? 'Gemini Nano runs on this device and can read photos of documents.' : 'Gemini Nano runs on this device.'}
-        >
-          <span className="dot dot--ok dot--live" />
-          <span>
-            <span className="navpill__long">Gemini </span>Nano ready
-          </span>
-        </span>
-      )
+      return {
+        tone: 'ok',
+        label: 'Ready',
+        title: caps.image ? 'Gemini Nano runs on this device and can read photos of documents.' : 'Gemini Nano runs on this device.',
+      }
     case 'downloadable':
     case 'downloading':
-      return (
-        <button className="navbtn navbtn--accent" onClick={() => void device.download()}>
-          <ChipIcon size={14} /> {caps.text === 'downloading' ? 'Finish Gemini Nano download' : 'Download Gemini Nano'}
-        </button>
-      )
+      return { tone: 'warn', label: caps.text === 'downloading' ? 'Finish download' : 'Download', title: 'Download Gemini Nano to this device.', action: () => void device.download() }
     case 'unsupported':
-      return (
-        <span className="navpill navpill--muted" title="Gemini Nano needs Chrome 139+ on desktop. Veil still protects your data with pattern rules.">
-          <span className="dot" /> No on-device AI in this browser
-        </span>
-      )
+      return { tone: 'off', label: 'Rules only', title: 'Gemini Nano needs Chrome 139+ on desktop. Veil still protects your data with pattern rules.' }
     default:
-      return (
-        <span className="navpill navpill--muted" title="This device cannot run Gemini Nano, or it is disabled in chrome://flags. Veil still protects your data with pattern rules.">
-          <span className="dot" /> On-device AI unavailable
-        </span>
-      )
+      return { tone: 'off', label: 'Rules only', title: 'This device cannot run Gemini Nano, or it is disabled in chrome://flags. Veil still protects your data with pattern rules.' }
   }
 }
 
-export function Header({ device }: { device: DeviceState }) {
+/**
+ * The hybrid indicator: the two engines Veil routes between, with the state of each.
+ * Left, Gemini Nano on this device; right, Gemini in the cloud (which only ever gets redacted text).
+ */
+function HybridStatus({ device, cloudEnabled }: { device: DeviceState; cloudEnabled: boolean }) {
+  const d = deviceState(device)
+  const cloud: { tone: Tone; label: string; title: string } = !device.online
+    ? { tone: 'warn', label: 'Offline', title: 'You are offline. Gemini Nano keeps working on this device.' }
+    : !cloudEnabled
+      ? { tone: 'warn', label: 'Paused', title: 'Cloud steps are paused by Remote Config. Gemini Nano keeps working on this device.' }
+      : { tone: 'ok', label: 'Redacted only', title: 'Gemini in the cloud only ever receives text with your personal data replaced by placeholders.' }
+
+  const deviceInner = (
+    <>
+      <ChipIcon size={15} />
+      <span className="hybrid__name">
+        Gemini Nano <span className="hybrid__where">on device</span>
+      </span>
+      <span className={`hybrid__state hybrid__state--${d.tone}`}>
+        <span className="dot" /> {d.label}
+      </span>
+    </>
+  )
+
+  return (
+    <div className="hybrid" role="group" aria-label="Hybrid AI status">
+      {d.action ? (
+        <button className="hybrid__half hybrid__half--device" onClick={d.action} title={d.title}>
+          {deviceInner}
+        </button>
+      ) : (
+        <span className="hybrid__half hybrid__half--device" role="status" title={d.title}>
+          {deviceInner}
+        </span>
+      )}
+      <span className="hybrid__link" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 9h15l-4-4M20 15H5l4 4" />
+        </svg>
+      </span>
+      <span className="hybrid__half hybrid__half--cloud" role="status" title={cloud.title}>
+        <CloudIcon size={15} />
+        <span className="hybrid__name">
+          Gemini <span className="hybrid__where">cloud</span>
+        </span>
+        <span className={`hybrid__state hybrid__state--${cloud.tone}`}>
+          <span className="dot" /> {cloud.label}
+        </span>
+      </span>
+    </div>
+  )
+}
+
+export function Header({
+  device,
+  cloudEnabled,
+  stage,
+  onTry,
+  onReset,
+  busy,
+}: {
+  device: DeviceState
+  cloudEnabled: boolean
+  stage: 'add' | 'review' | 'result'
+  onTry: () => void
+  onReset: () => void
+  busy: boolean
+}) {
   // A hairline and a frosted background appear once the page scrolls under the bar.
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
@@ -65,20 +109,28 @@ export function Header({ device }: { device: DeviceState }) {
       <div className="topbar__inner wrap">
         <a className="brand" href="/" aria-label="Veil, home">
           <Logo />
-          <span className="brand__name">Veil</span>
-          <span className="brand__tag">Private paperwork explainer</span>
+          <span className="brand__text">
+            <span className="brand__name">Veil</span>
+            <span className="brand__tag">Private paperwork explainer</span>
+          </span>
         </a>
-        <nav className="topbar__right" aria-label="Status and links">
-          {!device.online && (
-            <span className="navpill navpill--warn" role="status" title="Cloud steps are paused. Gemini Nano keeps working on this device.">
-              <span className="dot" /> Offline · on-device only
-            </span>
-          )}
-          <DeviceChip device={device} />
-          <a className="navbtn navbtn--source" href="https://github.com/ZNLong2203/veil" target="_blank" rel="noreferrer" title="Source code on GitHub">
-            <CodeIcon size={16} /> <span className="navbtn__label">Source</span>
+
+        <HybridStatus device={device} cloudEnabled={cloudEnabled} />
+
+        <nav className="topbar__right" aria-label="Links and actions">
+          <a className="navbtn navbtn--icon" href="https://github.com/ZNLong2203/veil" target="_blank" rel="noreferrer" title="Source code on GitHub" aria-label="Source code on GitHub">
+            <CodeIcon size={17} />
           </a>
           <ThemeToggle />
+          {stage === 'add' ? (
+            <button className="navcta" onClick={onTry} disabled={busy}>
+              Try a sample <ArrowIcon size={16} />
+            </button>
+          ) : (
+            <button className="navcta navcta--quiet" onClick={onReset} disabled={busy}>
+              New document
+            </button>
+          )}
         </nav>
       </div>
     </header>

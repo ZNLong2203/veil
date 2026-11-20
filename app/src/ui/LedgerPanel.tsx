@@ -38,15 +38,15 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
 
       <dl className="stats">
         <div className="stat--protected">
-          <dt>Protected</dt>
+          <dt>Hidden</dt>
           <dd>{vault.size}</dd>
         </div>
         <div className="stat--device">
-          <dt>On device</dt>
+          <dt>Device</dt>
           <dd>{s.onDevice}</dd>
         </div>
         <div className="stat--cloud">
-          <dt>In cloud</dt>
+          <dt>Cloud</dt>
           <dd>{s.inCloud}</dd>
         </div>
         <div className="stat--blocked">
