@@ -203,9 +203,15 @@ describe('friendlyError', () => {
   })
 })
 
-describe('todayIn', () => {
+describe('dates', () => {
+  it('writes ISO dates in running text the way people read them', async () => {
+    const { prettyDates } = await import('../core/dates')
+    expect(prettyDates('Pay by 2026-12-15, service on 2026-09-14.')).toBe('Pay by Dec 15, 2026, service on Sep 14, 2026.')
+    expect(prettyDates('Ref 2026-13-40 stays')).toBe('Ref 2026-13-40 stays')
+  })
+
   it('formats the date locally in the letter language', async () => {
-    const { todayIn } = await import('./tasks')
+    const { todayIn } = await import('../core/dates')
     const d = new Date(2026, 10, 20)
     expect(todayIn('English', d)).toBe('November 20, 2026')
     expect(todayIn('Unknown', d)).toBe('November 20, 2026')

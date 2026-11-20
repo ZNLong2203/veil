@@ -2,9 +2,22 @@ import { useRef, useState } from 'react'
 import { isFirebaseConfigured } from '../ai/env'
 import { PII_KINDS, PII_LABELS, type PiiKind } from '../core/types'
 import { LANGUAGES, type Session } from '../state/useSession'
-import { AlertIcon, ArrowIcon, ChipIcon, CheckIcon, CloudIcon, LockIcon, ShieldIcon, XIcon } from './icons'
+import { AlertIcon, ArrowIcon, CheckIcon, CopyIcon, LockIcon, ShieldIcon, XIcon } from './icons'
 import { RoutePlanCard } from './RoutePlanCard'
 import { SectionTitle } from './SectionTitle'
+import { VeilView } from './VeilView'
+
+const PII_PLURAL: Record<PiiKind, [string, string]> = {
+  PERSON: ['name', 'names'],
+  ADDRESS: ['address', 'addresses'],
+  EMAIL: ['email', 'emails'],
+  PHONE: ['phone', 'phones'],
+  IDNUM: ['ID number', 'ID numbers'],
+  CARD: ['card', 'cards'],
+  BANK: ['bank account', 'bank accounts'],
+  DOB: ['birth date', 'birth dates'],
+  OTHER: ['other', 'others'],
+}
 
 export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boolean; deviceReady: boolean }) {
   const docRef = useRef<HTMLDivElement>(null)
@@ -14,6 +27,7 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
   const entries = s.vault.entries()
   const segments = s.vault.segments(s.text)
   const rep = s.report
+  const kindCounts = PII_KINDS.map((k) => [k, entries.filter((e) => e.kind === k).length] as const).filter(([, n]) => n > 0)
 
   const captureSelection = () => {
     const sel = window.getSelection()
@@ -39,10 +53,7 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
       <header className="page-head">
         <p className="eyebrow">Step 2 of 3</p>
         <h1>Check what stays on your device</h1>
-        <p className="lead">
-          On the left is your document with personal data highlighted. On the right is the copy that would be sent. Nothing
-          leaves until you press Explain.
-        </p>
+        <p className="lead">Drag the veil across your document to see exactly what the cloud would get. Nothing leaves until you press Explain.</p>
       </header>
 
       {rep?.modelCovered && s.needsReview ? (
@@ -54,14 +65,24 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
           </span>
         </p>
       ) : rep?.modelCovered ? (
-        <p className="banner banner--ok" role="status">
-          <CheckIcon size={16} />
-          <span>
-            Gemini Nano read the whole document on this device. Pattern rules found {rep.rulesFound} value
-            {rep.rulesFound === 1 ? '' : 's'};{' '}
-            {rep.modelAdded > 0 ? `the model added ${rep.modelAdded} more.` : 'the model found nothing they missed.'}
+        <div className="scan" role="status">
+          <span className="scan__icon">
+            <CheckIcon size={18} />
           </span>
-        </p>
+          <div className="scan__text">
+            <strong>Scanned on this device</strong>
+            <span>
+              Pattern rules found {rep.rulesFound}; Gemini Nano read every line{rep.modelAdded > 0 ? ` and added ${rep.modelAdded}` : ' and found nothing new'}.
+            </span>
+          </div>
+          <ul className="scan__kinds" aria-label="What was hidden">
+            {kindCounts.map(([k, n]) => (
+              <li key={k}>
+                <b>{n}</b> {PII_PLURAL[k][n === 1 ? 0 : 1]}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : (
         <p className="banner banner--warn" role="status">
           <AlertIcon size={16} />
@@ -74,77 +95,37 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
         </p>
       )}
 
-      <div className="compare">
-        <section className="pane pane--local" aria-label="Your document">
-          <header className="pane__head">
-            <span className="chip chip--device">
-              <ChipIcon size={14} /> Your document · stays here
-            </span>
-            <span className="small muted">Select text to protect it</span>
-          </header>
-          <div ref={docRef} className="doc" onMouseUp={captureSelection} onKeyUp={captureSelection} tabIndex={0} aria-label="Your document with protected values highlighted">
-            {segments.map((seg, i) =>
-              seg.entry ? (
-                <mark key={i} title={`${seg.entry.token} · ${PII_LABELS[seg.entry.kind]}`}>
-                  {seg.text}
-                  <small>{PII_LABELS[seg.entry.kind]}</small>
-                </mark>
-              ) : (
-                <span key={i}>{seg.text}</span>
-              ),
-            )}
-          </div>
-          {selection && (
-            <div className="protectbar" role="group" aria-label="Protect selected text">
-              <span className="protectbar__text">“{selection}”</span>
-              <label className="sr-only" htmlFor="kind">
-                Type
-              </label>
-              <select id="kind" value={kind} onChange={(e) => setKind(e.target.value as PiiKind)}>
-                {PII_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {PII_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-              <button
-                className="btn btn--primary btn--sm"
-                onClick={() => {
-                  s.protect(selection, kind)
-                  setSelection('')
-                  window.getSelection()?.removeAllRanges()
-                }}
-              >
-                Protect
-              </button>
-            </div>
-          )}
-        </section>
-
-        <section className="pane pane--cloud" aria-label="What the cloud will see">
-          <header className="pane__head">
-            <span className="chip chip--cloud">
-              <CloudIcon size={14} /> What the cloud will see
-            </span>
-            <button className="link" onClick={() => void copyRedacted()}>
-              {copied ? 'Copied' : 'Copy redacted text'}
+      <VeilView segments={segments} docRef={docRef} onSelectionChange={captureSelection} />
+        {selection && (
+          <div className="protectbar" role="group" aria-label="Protect selected text">
+            <span className="protectbar__text">“{selection}”</span>
+            <label className="sr-only" htmlFor="kind">
+              Type
+            </label>
+            <select id="kind" value={kind} onChange={(e) => setKind(e.target.value as PiiKind)}>
+              {PII_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {PII_LABELS[k]}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn btn--primary btn--sm"
+              onClick={() => {
+                s.protect(selection, kind)
+                setSelection('')
+                window.getSelection()?.removeAllRanges()
+              }}
+            >
+              Protect
             </button>
-          </header>
-          <div className="doc" tabIndex={0} aria-label="The redacted copy that would be sent">
-            {segments.map((seg, i) =>
-              seg.entry ? (
-                <span key={i} className="tok" title={`${PII_LABELS[seg.entry.kind]} hidden`}>
-                  {seg.entry.token}
-                </span>
-              ) : (
-                <span key={i}>{seg.text}</span>
-              ),
-            )}
           </div>
-          <footer className="pane__foot">
-            {entries.length} value{entries.length === 1 ? '' : 's'} hidden. Safe to paste into any AI tool.
-          </footer>
-        </section>
+        )}
+      <div className="veil__tools">
+        <button className="btn btn--ghost btn--sm" onClick={() => void copyRedacted()}>
+          <CopyIcon size={14} /> {copied ? 'Copied' : 'Copy the redacted text'}
+        </button>
+        <span className="small muted">Safe to paste into any AI tool.</span>
       </div>
 
       <section className="card" aria-labelledby="pv-h">
@@ -153,8 +134,7 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
             Protected values<span className="count">{entries.length}</span>
           </SectionTitle>
           <p className="small muted">
-            <LockIcon size={12} /> locked values were found by Veil&apos;s rules and are always protected. You can un-protect values found by
-            Gemini Nano or added by you.
+            <LockIcon size={12} /> Found by rules: always protected. Values found by Gemini Nano or by you can be released with ×.
           </p>
         </div>
         {entries.length === 0 ? (
@@ -162,12 +142,12 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
         ) : (
           <ul className="vchips">
             {entries.map((e) => (
-              <li key={e.token} className="vchip">
+              <li key={e.token} className={`vchip vchip--${e.kind.toLowerCase()}`}>
                 <span className="token">{e.token}</span>
                 <span className="vchip__v" title={e.value}>
                   {e.value}
                 </span>
-                <span className="vchip__src">{e.source === 'on-device' ? 'Nano' : e.source === 'user' ? 'you' : 'rules'}</span>
+                {e.source !== 'rules' && <span className={`vchip__src vchip__src--${e.source}`}>{e.source === 'on-device' ? 'Nano' : 'you'}</span>}
                 {e.source === 'rules' ? (
                   <span className="icon-btn icon-btn--static" title="Always protected: Veil never sends values its rules recognise. They are filled back in on this device." role="img" aria-label={`Always protected: ${e.value}`}>
                     <LockIcon size={14} />
@@ -236,6 +216,9 @@ export function ReviewStep({ s, online, deviceReady }: { s: Session; online: boo
             ? 'You are offline: Gemini Nano on this device will write a shorter English summary.'
             : 'You are offline and Gemini Nano is not ready, so the explanation cannot run yet.'}
       </p>
+      <button className="btn btn--ghost btn--sm review-reset" onClick={s.reset}>
+        Start over
+      </button>
     </div>
   )
 }

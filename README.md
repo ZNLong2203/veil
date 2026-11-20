@@ -13,7 +13,7 @@ device when the answer arrives.
 
 1. Open the live demo (desktop Chrome gives you the full on-device path; any other browser works too).
 2. Click **Try it on a sample bill** (a fictional document). Gemini Nano finds the personal data on your device.
-3. Read the two panes: your document, and the exact redacted copy the cloud would see. Press **Explain this document**.
+3. Drag **the veil** across your document: one side is your text, the other is the exact redacted copy the cloud would see. Press **Explain this document**.
 4. Open **Action kit** and press **Draft the letter**. The highlighted details were filled in on your device, never sent.
 5. Under the answer, **Checked on the wire** re-checks the bytes that really left the tab. Click **See the exact bytes** to read the request, with placeholders.
 
@@ -29,7 +29,7 @@ of birth, address, member and claim numbers, card and account numbers.
 
 1. **Add** a document: paste text, open a file, or take a photo. Photos are read by Gemini Nano **on-device only**.
 2. **Review** what stays on your device. Deterministic rules plus Gemini Nano find personal data. You see your document and
-   the exact redacted copy side by side, can add or remove values, and see a **route plan**: what will run where for this
+   the exact redacted copy under a draggable veil, can add or remove values, and see a **route plan**: what will run where for this
    document and this device, and why.
 3. **Understand**: a plain-language summary, deadlines, red flags, key facts, next steps and questions to ask, in 11 languages.
    Real names are filled back in locally.

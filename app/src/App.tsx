@@ -94,7 +94,7 @@ export default function App() {
       )}
 
       <div className="wrap">
-        {s.stage === 'add' && <Hero onTry={tryHospitalBill} onOwn={focusOwnDocument} busy={s.busy?.label ?? null} />}
+        {s.stage === 'add' && <Hero onTry={tryHospitalBill} onOwn={focusOwnDocument} busy={s.busy?.label ?? (device.caps === null ? 'Checking on-device AI…' : null)} />}
 
         <div className="layout">
           <main id="main">

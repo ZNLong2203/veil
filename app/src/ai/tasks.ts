@@ -1,3 +1,4 @@
+import { todayIn } from '../core/dates'
 import { chunkText } from '../core/chunk'
 import { EgressBlockedError } from '../core/egress'
 import type { Route } from '../core/policy'
@@ -341,15 +342,3 @@ export async function draftAction(
   return { kind: opts.kind, topic, subject: parsed.subject ?? '', redactedBody: body, executedOn: value.executedOn }
 }
 
-const LOCALE_FOR_LANGUAGE: Record<string, string> = {
-  English: 'en-US', Español: 'es', 'Tiếng Việt': 'vi', 中文: 'zh', 日本語: 'ja', 한국어: 'ko',
-  Français: 'fr', Deutsch: 'de', Português: 'pt', हिन्दी: 'hi', العربية: 'ar',
-}
-
-export function todayIn(language: string, now = new Date()): string {
-  try {
-    return new Intl.DateTimeFormat(LOCALE_FOR_LANGUAGE[language] ?? 'en-US', { dateStyle: 'long' }).format(now)
-  } catch {
-    return now.toISOString().slice(0, 10)
-  }
-}

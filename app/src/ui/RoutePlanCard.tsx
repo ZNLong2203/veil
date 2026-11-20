@@ -42,6 +42,7 @@ export function RoutePlanCard({ s }: { s: Session }) {
       </div>
 
       <ul className="signals" aria-label="Signals used for routing">
+        <li className="signals__label">Decided by</li>
         {chips.map((c) => (
           <li key={c.text} className={`signal ${c.tone ? `signal--${c.tone}` : ''}`}>
             {c.text}
@@ -49,18 +50,15 @@ export function RoutePlanCard({ s }: { s: Session }) {
         ))}
       </ul>
 
-      <ol className="plan">
+      <ol className="pipe">
         {plan.steps.map((step) => {
           const r = RUNS_ON[step.runsOn]
+          const tone = step.runsOn === 'device' ? 'blue' : step.runsOn === 'skipped' ? 'grey' : 'violet'
           return (
-            <li key={step.task} className="plan__step">
-              <div className="plan__head">
-                <strong>{POLICY[step.task].label}</strong>
-                <span className={r.cls}>
-                  {r.icon}
-                  {r.label}
-                </span>
-              </div>
+            <li key={step.task} className="pipe__step">
+              <span className={`tile tile--${tone}`}>{step.runsOn === 'device' ? <ChipIcon size={18} /> : step.runsOn === 'skipped' ? <CodeIcon size={18} /> : <CloudIcon size={18} />}</span>
+              <strong>{POLICY[step.task].label}</strong>
+              <span className={r.cls}>{r.label}</span>
               <p className="small muted">{step.reason}</p>
             </li>
           )

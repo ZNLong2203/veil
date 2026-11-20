@@ -7,10 +7,10 @@ import { PlaneIcon, ShieldIcon } from './icons'
 import { WirePanel } from './WirePanel'
 
 const ROUTE_LABEL = {
-  ON_DEVICE_ONLY: 'only on-device',
-  PREFER_ON_DEVICE: 'prefer on-device',
-  PREFER_CLOUD: 'prefer cloud',
-  CLOUD_ONLY: 'only cloud',
+  ON_DEVICE_ONLY: 'device only',
+  PREFER_ON_DEVICE: 'prefers device',
+  PREFER_CLOUD: 'prefers cloud',
+  CLOUD_ONLY: 'cloud only',
 } as const
 
 /**
@@ -38,7 +38,7 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
 
       <dl className="stats">
         <div className="stat--protected">
-          <dt>Values protected</dt>
+          <dt>Protected</dt>
           <dd>{vault.size}</dd>
         </div>
         <div className="stat--device">
@@ -63,13 +63,13 @@ export function LedgerPanel({ vault, version }: { vault: Vault; version: number 
         {entries.length === 0 && <li className="muted small">AI steps will appear here as they happen.</li>}
         {[...entries].reverse().map((e) => (
           <li key={e.id} data-on={e.executedOn}>
-            <div className="timeline__row">
-              <strong>{POLICY[e.task].label}</strong>
+            <strong className="timeline__title">{e.executedOn === 'LOCAL' && e.task === 'findEntities' ? 'Pattern rules' : POLICY[e.task].label}</strong>
+            <div className="timeline__meta">
               <ExecChip on={e.executedOn} />
-            </div>
-            <div className="muted small">
-              {ROUTE_LABEL[e.route]} · {e.durationMs} ms
-              {e.charsSent > 0 && ` · ${e.charsSent.toLocaleString()} chars sent`}
+              <span className="muted">
+                {ROUTE_LABEL[e.route]} · {e.durationMs.toLocaleString()} ms
+                {e.charsSent > 0 && ` · ${e.charsSent.toLocaleString()} chars`}
+              </span>
             </div>
             {e.note && <div className="note">{e.note}</div>}
           </li>

@@ -107,7 +107,7 @@ export function Hero({ onTry, onOwn, busy }: { onTry: () => void; onOwn: () => v
             </span>
             <div>
               <strong>You see exactly what is sent</strong>
-              <span>Side by side, with a live ledger of where each step ran.</span>
+              <span>Drag the veil to compare, with a live ledger of where each step ran.</span>
             </div>
           </li>
         </ul>

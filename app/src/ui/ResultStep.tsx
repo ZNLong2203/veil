@@ -1,17 +1,42 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { Session } from '../state/useSession'
+import { prettyDates } from '../core/dates'
 import { ActionKit } from './ActionKit'
 import { ExecChip } from './Chips'
 import { AlertIcon, ArrowIcon, CalendarIcon, CheckIcon, EyeIcon, ListIcon, QuestionIcon, ShieldIcon } from './icons'
 import { SectionTitle } from './SectionTitle'
 import { WireProof } from './WirePanel'
 
-/** "2026-12-15" reads as "Dec 15, 2026"; anything else (e.g. "within 30 days") is shown as written. */
-function friendlyDate(text: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim())
-  if (!m) return text
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-  return d.getMonth() === Number(m[2]) - 1 ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : text
+/** Model text with placeholders: filled in and highlighted on this device, or shown as placeholders. Dates read naturally. */
+function Rich({ t, reveal, s }: { t: string; reveal: boolean; s: Session }) {
+  if (reveal) {
+    return (
+      <>
+        {s.vault.fillSegments(t).map((seg, i) =>
+          seg.filled ? (
+            <span key={i} className="filled filled--soft" title="Filled in on this device. The cloud only saw a placeholder.">
+              {seg.text}
+            </span>
+          ) : (
+            <Fragment key={i}>{prettyDates(seg.text, s.language)}</Fragment>
+          ),
+        )}
+      </>
+    )
+  }
+  return (
+    <>
+      {t.split(/(\[[A-Z]+_\d+\])/g).map((part, i) =>
+        /^\[[A-Z]+_\d+\]$/.test(part) ? (
+          <span key={i} className="tok">
+            {part}
+          </span>
+        ) : (
+          <Fragment key={i}>{prettyDates(part, s.language)}</Fragment>
+        ),
+      )}
+    </>
+  )
 }
 
 const SEVERITY_LABEL = { low: 'Low', medium: 'Medium', high: 'High' } as const
@@ -23,8 +48,10 @@ export function ResultStep({ s }: { s: Session }) {
   if (!s.result) return null
 
   const { executedOn, compact } = s.result
-  const e = reveal ? s.showExplanation(s.result.explanation) : s.result.explanation
-  const show = (t: string) => (reveal ? s.show(t) : t)
+  // Always render from the redacted explanation: real values are filled in here, highlighted, so you can see what came back locally.
+  const e = s.result.explanation
+  const rich = (t: string) => <Rich t={t} reveal={reveal} s={s} />
+  const doneCount = e.nextSteps.filter((_, i) => done[i]).length
 
   return (
     <div className="stack">
@@ -55,7 +82,7 @@ export function ResultStep({ s }: { s: Session }) {
       <WireProof vault={s.vault} />
 
       <section className="card card--lift summary-card" aria-label="Summary">
-        <p className="summary">{e.plainSummary}</p>
+        <p className="summary">{rich(e.plainSummary)}</p>
         <label className="check">
           <input type="checkbox" checked={reveal} onChange={(ev) => setReveal(ev.target.checked)} />
           <span>
@@ -75,11 +102,11 @@ export function ResultStep({ s }: { s: Session }) {
                 {e.deadlines.map((d, i) => (
                   <li key={i}>
                     <time>
-                      <CalendarIcon size={14} /> {friendlyDate(show(d.date))}
+                      <CalendarIcon size={14} /> {rich(d.date)}
                     </time>
                     <div>
-                      <strong>{show(d.what)}</strong>
-                      {d.consequence && <p className="muted small">{show(d.consequence)}</p>}
+                      <strong>{rich(d.what)}</strong>
+                      {d.consequence && <p className="muted small">{rich(d.consequence)}</p>}
                     </div>
                   </li>
                 ))}
@@ -99,8 +126,8 @@ export function ResultStep({ s }: { s: Session }) {
                       <AlertIcon size={12} /> {SEVERITY_LABEL[f.severity] ?? f.severity}
                     </span>
                     <div>
-                      <strong>{show(f.issue)}</strong>
-                      <p>{show(f.whyItMatters)}</p>
+                      <strong>{rich(f.issue)}</strong>
+                      <p>{rich(f.whyItMatters)}</p>
                     </div>
                   </li>
                 ))}
@@ -118,8 +145,8 @@ export function ResultStep({ s }: { s: Session }) {
           <dl className="facts">
             {e.keyFacts.map((f, i) => (
               <div key={i}>
-                <dt>{show(f.label)}</dt>
-                <dd>{show(f.value)}</dd>
+                <dt>{rich(f.label)}</dt>
+                <dd>{rich(f.value)}</dd>
               </div>
             ))}
           </dl>
@@ -133,11 +160,17 @@ export function ResultStep({ s }: { s: Session }) {
               <SectionTitle id="ns-h" tone="green" icon={<CheckIcon size={18} />}>
                 Next steps
               </SectionTitle>
+              <div className={`progress ${doneCount === e.nextSteps.length ? 'progress--done' : ''}`} aria-live="polite">
+                <span className="progress__bar">
+                  <span style={{ width: `${(doneCount / e.nextSteps.length) * 100}%` }} />
+                </span>
+                <span className="small">{doneCount === e.nextSteps.length ? 'All done. Nice work.' : `${doneCount} of ${e.nextSteps.length} done`}</span>
+              </div>
               <ul className="steps-list">
                 {e.nextSteps.map((t, i) => (
                   <li key={i}>
                     <input id={`ns-${i}`} type="checkbox" checked={!!done[i]} onChange={(ev) => setDone((d) => ({ ...d, [i]: ev.target.checked }))} />
-                    <label htmlFor={`ns-${i}`}>{show(t)}</label>
+                    <label htmlFor={`ns-${i}`}>{rich(t)}</label>
                   </li>
                 ))}
               </ul>
@@ -150,7 +183,7 @@ export function ResultStep({ s }: { s: Session }) {
               </SectionTitle>
               <ul className="questions">
                 {e.questionsToAsk.map((t, i) => (
-                  <li key={i}>{show(t)}</li>
+                  <li key={i}>{rich(t)}</li>
                 ))}
               </ul>
             </section>
@@ -172,7 +205,7 @@ export function ResultStep({ s }: { s: Session }) {
                   <p>{a.q}</p>
                 </div>
                 <div className="bubble bubble--a">
-                  <p>{show(a.redactedAnswer)}</p>
+                  <p>{rich(a.redactedAnswer)}</p>
                   <ExecChip on={a.executedOn} />
                 </div>
               </div>
