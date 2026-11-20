@@ -22,7 +22,11 @@ export interface DeviceCapabilities {
   image: boolean
 }
 
+/** `?nano=off` pretends Gemini Nano is not there, to try Veil the way it runs in Safari, Firefox or an unsupported Chrome. */
+const nanoDisabledByUrl = () => typeof location !== 'undefined' && new URLSearchParams(location.search).get('nano') === 'off'
+
 async function probe(image: boolean): Promise<DeviceStatus> {
+  if (nanoDisabledByUrl()) return 'unsupported'
   const lm = chromeLanguageModel()
   if (!lm) return 'unsupported'
   try {

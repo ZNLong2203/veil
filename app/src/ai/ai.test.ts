@@ -4,6 +4,7 @@ import { EgressBlockedError } from '../core/egress'
 import { ledger, summarize } from '../core/ledger'
 import { Vault } from '../core/vault'
 import { runTask } from './run'
+import { friendlyError } from '../state/useSession'
 import { entitiesToSpans, normalizeExplanation, onGenerationProgress, redactQuestion, withCloudFallback, type Attempt } from './tasks'
 
 /** A stand-in for a Firebase AI Logic hybrid model. Only the parts `runTask` touches. */
@@ -180,5 +181,24 @@ describe('withCloudFallback', () => {
     const out = await withCloudFallback({ route: 'ON_DEVICE_ONLY', compact: true }, models, r.attempt)
     expect(out.compact).toBe(true)
     expect(r.seen).toEqual([{ route: 'ON_DEVICE_ONLY', cloudModel: 'big', compact: true }])
+  })
+})
+
+describe('friendlyError', () => {
+  const msg = (m: string) => friendlyError(new Error(m))
+  it('explains a rate limit without exposing the raw SDK message', () => {
+    expect(msg('AI: Error fetching from https://x/y:generateContent: [429 ] Resource exhausted')).toMatch(/free usage limit/)
+    expect(msg('AI: Error fetching from https://x/y: [429 ] Resource exhausted')).not.toMatch(/https:/)
+  })
+  it('explains a busy model and a timeout', () => {
+    expect(msg('[500 ] This model is currently experiencing high demand.')).toMatch(/busy/)
+    expect(msg('Timeout has expired.')).toMatch(/busy/)
+  })
+  it('explains a network failure', () => {
+    expect(msg('TypeError: Failed to fetch')).toMatch(/could not reach the cloud/)
+  })
+  it('keeps the on-device and App Check explanations', () => {
+    expect(msg('Inference mode is ONLY_ON_DEVICE, but an on-device model is not available.')).toMatch(/Gemini Nano/)
+    expect(msg('Firebase App Check token is invalid')).toMatch(/App Check/)
   })
 })

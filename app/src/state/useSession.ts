@@ -61,6 +61,15 @@ export function friendlyError(e: unknown): string {
   if (/ONLY_ON_DEVICE|on-device model is not available|LanguageModel API not available/i.test(msg)) {
     return 'This step needs Gemini Nano on this device, and it is not available right now. Use the header button to download it (Chrome 139+ on desktop), or continue with rules only.'
   }
+  if (/\[429|RESOURCE_EXHAUSTED|quota|rate.?limit/i.test(msg)) {
+    return 'The cloud model has reached its free usage limit for the moment. Wait a minute and try again, or open Veil in desktop Chrome with Gemini Nano to run it on your device.'
+  }
+  if (/\[5\d\d|high demand|overloaded|unavailable|timeout/i.test(msg)) {
+    return 'The cloud model is busy right now. Wait a few seconds and try again.'
+  }
+  if (/failed to fetch|network|offline|ERR_INTERNET/i.test(msg)) {
+    return 'Veil could not reach the cloud. Check your connection and try again.'
+  }
   if (/app.?check/i.test(msg)) return `Firebase App Check rejected the request. Check the App Check setup in docs/setup.md. (${msg})`
   if (/api-not-enabled|not been used|PERMISSION_DENIED/i.test(msg)) return `Firebase AI Logic is not enabled for this project yet. See docs/setup.md. (${msg})`
   return msg
